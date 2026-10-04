@@ -28,6 +28,7 @@ export function useElectionData() {
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const hasLoadedRef = useRef<boolean>(false);
 
   // 1. Carregar o arquivo estático de 2022 na inicialização
   useEffect(() => {
@@ -44,7 +45,7 @@ export function useElectionData() {
     load2022();
   }, []);
 
-  // 2. Função de busca de dados do TSE (2026)
+  // 2. Função de busca de dados do TSE (2026) - Estável, sem dependência de estado2026
   const fetch2026Data = useCallback(async (isManual: boolean = false) => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -54,22 +55,30 @@ export function useElectionData() {
     abortControllerRef.current = controller;
 
     setIsAtualizando(true);
-    if (!estado2026) setIsCarregando(true);
+    if (!hasLoadedRef.current) {
+      setIsCarregando(true);
+    }
+
+    const minDelayPromise = new Promise(resolve => setTimeout(resolve, 400));
 
     try {
       // Verificar se a URL possui flag ?demo=true
       const isDemoUrl = typeof window !== 'undefined' && window.location.search.includes('demo=true');
       const url = isDemoUrl ? '/api/tse?demo=true' : '/api/tse';
 
-      const res = await fetch(url, {
-        signal: controller.signal,
-        headers: { 'Cache-Control': 'no-cache' }
-      });
+      const [res] = await Promise.all([
+        fetch(url, {
+          signal: controller.signal,
+          headers: { 'Cache-Control': 'no-cache' }
+        }),
+        minDelayPromise
+      ]);
 
       if (!res.ok) throw new Error(`Status ${res.status}`);
 
       const data: ElectionState = await res.json();
       setEstado2026(data);
+      hasLoadedRef.current = true;
       setErro(null);
 
       // Registrar ponto de sessão para o gráfico Sparkline
@@ -82,7 +91,6 @@ export function useElectionData() {
           lulaPct: cand1Pct,
           oposicaoPct: cand2Pct
         };
-        // Evitar duplicatas do mesmo timestamp
         if (prev.length > 0 && prev[prev.length - 1].tempo === novoPonto.tempo) {
           const updated = [...prev];
           updated[updated.length - 1] = novoPonto;
@@ -102,17 +110,19 @@ export function useElectionData() {
       setIsAtualizando(false);
       setIsCarregando(false);
     }
-  }, [estado2026]);
+  }, []);
 
-  // 3. Inicializar polling e contador decrescente segundo a segundo
+  const fetch2026DataRef = useRef(fetch2026Data);
+  fetch2026DataRef.current = fetch2026Data;
+
+  // 3. Inicializar polling e contador decrescente segundo a segundo (executa apenas uma vez no mount)
   useEffect(() => {
-    fetch2026Data(false);
+    fetch2026DataRef.current(false);
 
-    // Intervalo de 1 segundo para o relógio de contagem regressiva
     timerRef.current = setInterval(() => {
       setTempoRestante((prev) => {
         if (prev <= 1) {
-          fetch2026Data(false);
+          fetch2026DataRef.current(false);
           return POLLING_INTERVAL_SECONDS;
         }
         return prev - 1;
@@ -123,7 +133,7 @@ export function useElectionData() {
       if (timerRef.current) clearInterval(timerRef.current);
       if (abortControllerRef.current) abortControllerRef.current.abort();
     };
-  }, [fetch2026Data]);
+  }, []);
 
   // 4. Calcular o estado comparativo de 2022 sincronizado
   let matching2022State: ElectionState | null = null;

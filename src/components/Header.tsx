@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { ComparisonMode } from '@/lib/types';
 
 interface HeaderProps {
@@ -24,6 +24,30 @@ export function Header({
 }: HeaderProps) {
   const [isDark, setIsDark] = useState<boolean>(false);
   const [mounted, setMounted] = useState<boolean>(false);
+  const [isSpinning, setIsSpinning] = useState<boolean>(false);
+
+  const isAtualizandoRef = useRef(isAtualizando);
+  isAtualizandoRef.current = isAtualizando;
+
+  // Iniciar giro suave quando isAtualizando for true
+  useEffect(() => {
+    if (isAtualizando) {
+      setIsSpinning(true);
+    } else if (isSpinning) {
+      // Timeout de segurança caso onAnimationIteration não dispare
+      const timeout = setTimeout(() => {
+        setIsSpinning(false);
+      }, 1100);
+      return () => clearTimeout(timeout);
+    }
+  }, [isAtualizando, isSpinning]);
+
+  // Completar a rotação de 360 graus suavemente antes de parar
+  const handleAnimationIteration = () => {
+    if (!isAtualizandoRef.current) {
+      setIsSpinning(false);
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -103,21 +127,23 @@ export function Header({
             <span className="tabular-nums">{tempoRestante}s</span>
             <button
               onClick={recarregarAgora}
-              disabled={isAtualizando}
+              disabled={isAtualizando || isSpinning}
               title="Atualizar agora"
-              className="text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors disabled:opacity-40 p-0.5 inline-flex items-center justify-center"
+              className="text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors disabled:opacity-40 p-0.5 inline-flex items-center justify-center cursor-pointer"
             >
               <svg
-                className={`w-3 h-3 ${isAtualizando ? 'animate-spin' : ''}`}
-                viewBox="0 0 16 16"
+                onAnimationIteration={handleAnimationIteration}
+                className={`w-3 h-3 ${isSpinning ? 'animate-spin' : ''}`}
+                viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="1.75"
+                strokeWidth="2.2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                style={{ transformOrigin: 'center' }}
               >
-                <path d="M1.5 8a6.5 6.5 0 1 0 1.9-4.6L1.5 5.5" />
-                <path d="M1.5 2v3.5h3.5" />
+                <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+                <path d="M21 3v5h-5" />
               </svg>
             </button>
           </div>
