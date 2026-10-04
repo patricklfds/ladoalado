@@ -1,8 +1,7 @@
 import type {
   TimelinePoint2022,
   ElectionState,
-  CandidateResult,
-  ComparisonMode
+  CandidateResult
 } from './types';
 
 /**

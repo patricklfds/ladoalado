@@ -39,7 +39,7 @@ export function ProgressHeader({
           {modo === 'urnas' ? (
             <span>
               em 2022 este marco ocorreu às{' '}
-              <strong className="text-[var(--fg)] font-semibold">{estado2022?.timestamp || '18:51'}</strong>
+              <strong className="text-[var(--fg)] font-semibold">{estado2022?.timestamp || '--:--'}</strong>
               {ritmoMinutos !== 0 && (
                 <span className="text-[var(--fg-subtle)] ml-1">
                   ({ritmoMinutos > 0 ? `+${ritmoMinutos} min mais rápida` : `${Math.abs(ritmoMinutos)} min mais lenta`})

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import type { CandidateResult, ElectionState, ComparisonMode } from '@/lib/types';
+import type { ElectionState, ComparisonMode } from '@/lib/types';
 import { formatCandidateName, getCandidateColor, getHistoricalReference } from '@/lib/candidateUtils';
 
 interface ComparisonArenaProps {

@@ -116,6 +116,8 @@ export function TrajectoryChart({
 
       <div className="w-full overflow-x-auto">
         <svg
+          role="img"
+          aria-label={`Gráfico de curva de apuração comparada: ${cand1Nome} (${cand1Pct.toFixed(1)}%) e ${cand2Nome} (${cand2Pct.toFixed(1)}%) com referência histórica de 2022`}
           viewBox={`0 0 ${width} ${height}`}
           className="w-full h-auto min-w-[550px] overflow-visible"
         >

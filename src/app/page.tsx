@@ -23,13 +23,16 @@ export default function HomePage() {
     margem2022,
     ritmoMinutos,
     tempoRestante,
+    isCarregando,
     isAtualizando,
+    erro,
     timeline2022,
     recarregarAgora
   } = useElectionData();
 
   const isDemo = estado2026?.origem.includes('demo');
   const cands2026 = [...(estado2026?.candidatos || [])].sort((a, b) => b.percentual - a.percentual);
+  const secoesPct = estado2026?.secoesTotalizadasPct ?? 0;
 
   return (
     <div className="min-h-screen flex flex-col bg-[var(--bg)] text-[var(--fg)] selection:bg-[var(--fg)] selection:text-[var(--bg)]">
@@ -46,40 +49,79 @@ export default function HomePage() {
 
       {/* 2. Conteúdo Centralizado com Amplo Respiro Editorial */}
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6">
-        {/* Termômetro Geral Linear */}
-        <ProgressHeader
-          estado2026={estado2026}
-          estado2022={estado2022}
-          modo={modo}
-          ritmoMinutos={ritmoMinutos}
-        />
+        {/* Banner Sutil de Falha Temporária ou Conexão com TSE */}
+        {erro && (
+          <div
+            role="alert"
+            className="my-4 px-3.5 py-2.5 rounded border border-amber-300 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/20 text-xs font-mono flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-amber-900 dark:text-amber-200"
+          >
+            <div className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+              <span>{erro} Exibindo últimos dados registrados.</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => recarregarAgora()}
+              className="underline hover:no-underline font-semibold text-left sm:text-right cursor-pointer"
+            >
+              Tentar reconectar
+            </button>
+          </div>
+        )}
 
-        {/* Arena Principal Lado a Lado */}
-        <ComparisonArena
-          estado2026={estado2026}
-          estado2022={estado2022}
-          modo={modo}
-          deltaLider={deltaLider}
-          deltaSegundo={deltaSegundo}
-          deltaLula={deltaLula}
-          deltaOposicao={deltaOposicao}
-          margem2026={margem2026}
-          margem2022={margem2022}
-        />
+        {/* Aviso Prévio às 17h quando a apuração ainda não começou */}
+        {!isCarregando && estado2026 && secoesPct === 0 && (
+          <div className="my-4 px-3.5 py-2.5 rounded border border-[var(--border)] bg-[var(--surface)] text-xs font-mono text-[var(--fg-muted)] flex items-center justify-between gap-2">
+            <span>
+              ℹ️ Urnas fechadas às 17h00. Aguardando transmissão dos primeiros boletins oficiais pelo TSE.
+            </span>
+          </div>
+        )}
 
-        {/* Gráfico de Trajetória SVG 100% Dinâmico */}
-        <TrajectoryChart
-          timeline2022={timeline2022}
-          currentPct2026={estado2026?.secoesTotalizadasPct || 0}
-          cand1={cands2026[0]}
-          cand2={cands2026[1]}
-        />
+        {/* Skeleton de Carregamento Inicial Limpo */}
+        {isCarregando && !estado2026 ? (
+          <div className="py-20 text-center space-y-4 font-mono text-xs text-[var(--fg-muted)]">
+            <div className="inline-block w-6 h-6 border-2 border-[var(--border)] border-t-[var(--fg)] rounded-full animate-spin" />
+            <p>Conectando à base de dados eleitorais...</p>
+          </div>
+        ) : (
+          <>
+            {/* Termômetro Geral Linear */}
+            <ProgressHeader
+              estado2026={estado2026}
+              estado2022={estado2022}
+              modo={modo}
+              ritmoMinutos={ritmoMinutos}
+            />
 
-        {/* Demais Candidatos em Lista Tabular Limpa */}
-        <OtherCandidates
-          candidatos2026={estado2026?.candidatos || []}
-          candidatos2022={estado2022?.candidatos || []}
-        />
+            {/* Arena Principal Lado a Lado */}
+            <ComparisonArena
+              estado2026={estado2026}
+              estado2022={estado2022}
+              modo={modo}
+              deltaLider={deltaLider}
+              deltaSegundo={deltaSegundo}
+              deltaLula={deltaLula}
+              deltaOposicao={deltaOposicao}
+              margem2026={margem2026}
+              margem2022={margem2022}
+            />
+
+            {/* Gráfico de Trajetória SVG 100% Dinâmico */}
+            <TrajectoryChart
+              timeline2022={timeline2022}
+              currentPct2026={secoesPct}
+              cand1={cands2026[0]}
+              cand2={cands2026[1]}
+            />
+
+            {/* Demais Candidatos em Lista Tabular Limpa */}
+            <OtherCandidates
+              candidatos2026={estado2026?.candidatos || []}
+              candidatos2022={estado2022?.candidatos || []}
+            />
+          </>
+        )}
 
         {/* Rodapé Silencioso */}
         <Footer

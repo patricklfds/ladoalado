@@ -22,10 +22,10 @@ export function Footer({ timestampISO, origem }: FooterProps) {
 
         <div className="text-right sm:text-right space-y-1 text-[11px]">
           <p>
-            Sincronizado: {timestampISO ? new Date(timestampISO).toLocaleTimeString('pt-BR') : '18:48:00'}
+            Sincronizado: {timestampISO ? new Date(timestampISO).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '--:--:--'} (Horário de Brasília)
           </p>
           <p className="text-[var(--fg-subtle)]">
-            Pacote: {origem || 'tse-live'}
+            Origem: {origem || 'tse-live'}
           </p>
         </div>
       </div>

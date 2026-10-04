@@ -20,13 +20,40 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#FAFAF8" },
+    { media: "(prefers-color-scheme: dark)", color: "#0A0A0B" },
+  ],
 };
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://ladoalado.app";
+
 export const metadata: Metadata = {
-  title: "Lado a Lado — 2026 vs 2022",
-  description: "Acompanhe e compare em tempo real a apuração dos votos da eleição presidencial de 2026 com o histórico de 2022.",
-  keywords: ["eleições 2026", "apuração de votos", "tse", "lado a lado", "comparação 2022 e 2026"],
+  metadataBase: new URL(siteUrl),
+  title: "Lado a Lado — Apuração Presidencial Comparada (2026 vs 2022)",
+  description: "Acompanhe e compare em tempo real a apuração dos votos da eleição presidencial de 2026 com o histórico de 2022 sincronizado a cada 60 segundos.",
+  keywords: ["eleições 2026", "apuração de votos", "tse", "lado a lado", "comparação 2022 e 2026", "tempo real", "jornalismo de dados"],
   authors: [{ name: "Lado a Lado" }],
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "Lado a Lado — Apuração Presidencial 2026 vs 2022",
+    description: "Comparador em tempo real da apuração eleitoral de 2026 com o histórico de 2022 sincronizado a cada 60 segundos com dados oficiais do TSE.",
+    url: "/",
+    siteName: "Lado a Lado",
+    locale: "pt_BR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Lado a Lado — Apuração Presidencial 2026 vs 2022",
+    description: "Comparador em tempo real da apuração eleitoral de 2026 com o histórico de 2022 sincronizado a cada 60 segundos.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({

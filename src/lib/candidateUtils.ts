@@ -121,14 +121,17 @@ export function getHistoricalReference(
   const nomeUpper = cand2026.nome.toUpperCase();
   const partyUpper = cand2026.partido ? cand2026.partido.toUpperCase() : '';
 
+  const pct2026 = Number.isFinite(cand2026.percentual) ? cand2026.percentual : 0;
+
   // 1. Lula 2026 -> Lula 2022
   if (nomeUpper.includes('LULA')) {
     const ref = cands2022.find(c => c.nome.toUpperCase().includes('LULA'));
     if (ref) {
+      const refPct = Number.isFinite(ref.percentual) ? ref.percentual : 0;
       return {
         label: 'vs Lula 2022',
-        percentual: ref.percentual,
-        delta: Number((cand2026.percentual - ref.percentual).toFixed(2))
+        percentual: refPct,
+        delta: Number((pct2026 - refPct).toFixed(2))
       };
     }
   }
@@ -137,10 +140,11 @@ export function getHistoricalReference(
   if (nomeUpper.includes('BOLSONARO') || partyUpper === 'PL') {
     const ref = cands2022.find(c => c.nome.toUpperCase().includes('BOLSONARO'));
     if (ref) {
+      const refPct = Number.isFinite(ref.percentual) ? ref.percentual : 0;
       return {
         label: 'vs Jair Bolsonaro 2022',
-        percentual: ref.percentual,
-        delta: Number((cand2026.percentual - ref.percentual).toFixed(2))
+        percentual: refPct,
+        delta: Number((pct2026 - refPct).toFixed(2))
       };
     }
   }
@@ -148,20 +152,22 @@ export function getHistoricalReference(
   // 3. Mesmo partido em 2022 (ex: UP -> Leo Péricles, MDB -> Simone Tebet, PDT -> Ciro Gomes)
   const byParty = cands2022.find(c => c.partido.toUpperCase() === partyUpper);
   if (byParty) {
+    const refPct = Number.isFinite(byParty.percentual) ? byParty.percentual : 0;
     return {
       label: `vs ${formatCandidateName(byParty.nome)} (${byParty.partido}) 2022`,
-      percentual: byParty.percentual,
-      delta: Number((cand2026.percentual - byParty.percentual).toFixed(2))
+      percentual: refPct,
+      delta: Number((pct2026 - refPct).toFixed(2))
     };
   }
 
   // 4. Fallback nominal: mesmo ranking de 2022 (ex: 3º lugar de 2026 vs 3º lugar de 2022)
   const byRank = cands2022[cand2026.posicao - 1];
   if (byRank) {
+    const refPct = Number.isFinite(byRank.percentual) ? byRank.percentual : 0;
     return {
       label: `vs ${cand2026.posicao}º em 2022 (${formatCandidateName(byRank.nome)})`,
-      percentual: byRank.percentual,
-      delta: Number((cand2026.percentual - byRank.percentual).toFixed(2))
+      percentual: refPct,
+      delta: Number((pct2026 - refPct).toFixed(2))
     };
   }
 

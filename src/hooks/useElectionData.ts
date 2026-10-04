@@ -4,8 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type {
   ElectionState,
   TimelinePoint2022,
-  ComparisonMode,
-  ComparisonData
+  ComparisonMode
 } from '@/lib/types';
 import {
   point2022ToElectionState,
@@ -46,7 +45,7 @@ export function useElectionData() {
   }, []);
 
   // 2. Função de busca de dados do TSE (2026) - Estável, sem dependência de estado2026
-  const fetch2026Data = useCallback(async (isManual: boolean = false) => {
+  const fetch2026Data = useCallback(async () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -54,6 +53,7 @@ export function useElectionData() {
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
+    await Promise.resolve();
     setIsAtualizando(true);
     if (!hasLoadedRef.current) {
       setIsCarregando(true);
@@ -112,17 +112,16 @@ export function useElectionData() {
     }
   }, []);
 
-  const fetch2026DataRef = useRef(fetch2026Data);
-  fetch2026DataRef.current = fetch2026Data;
-
-  // 3. Inicializar polling e contador decrescente segundo a segundo (executa apenas uma vez no mount)
+  // 3. Inicializar polling e contador decrescente segundo a segundo
   useEffect(() => {
-    fetch2026DataRef.current(false);
+    const initTimer = setTimeout(() => {
+      fetch2026Data();
+    }, 0);
 
     timerRef.current = setInterval(() => {
       setTempoRestante((prev) => {
         if (prev <= 1) {
-          fetch2026DataRef.current(false);
+          fetch2026Data();
           return POLLING_INTERVAL_SECONDS;
         }
         return prev - 1;
@@ -130,10 +129,11 @@ export function useElectionData() {
     }, 1000);
 
     return () => {
+      clearTimeout(initTimer);
       if (timerRef.current) clearInterval(timerRef.current);
       if (abortControllerRef.current) abortControllerRef.current.abort();
     };
-  }, []);
+  }, [fetch2026Data]);
 
   // 4. Calcular o estado comparativo de 2022 sincronizado
   let matching2022State: ElectionState | null = null;
@@ -198,6 +198,6 @@ export function useElectionData() {
     erro,
     timeline2022,
     pontosSessao2026,
-    recarregarAgora: () => fetch2026Data(true)
+    recarregarAgora: () => fetch2026Data()
   };
 }

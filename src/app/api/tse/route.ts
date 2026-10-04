@@ -8,12 +8,34 @@ const DEFAULT_ELECTION_CYCLE = process.env.NEXT_PUBLIC_TSE_ELECTION_CYCLE || 'el
 
 function parseTSEFloat(value: string | undefined): number {
   if (!value) return 0;
-  return Number(value.replace('.', '').replace(',', '.'));
+  const parsed = Number(value.replace('.', '').replace(',', '.'));
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function parseTSEInt(value: string | undefined): number {
   if (!value) return 0;
-  return parseInt(value.replace(/\D/g, ''), 10) || 0;
+  const parsed = parseInt(value.replace(/\D/g, ''), 10);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function parseSafeFloat(val: string | null | undefined, defaultValue: number): number {
+  if (!val) return defaultValue;
+  const num = parseFloat(val);
+  return Number.isFinite(num) && num >= 0 && num <= 100 ? Number(num.toFixed(2)) : defaultValue;
+}
+
+// Rate Limiter simples em memória para Edge / Node
+const ipRequestCounts = new Map<string, { count: number; resetTime: number }>();
+
+function isRateLimited(ip: string, maxRequests = 60, windowMs = 60000): boolean {
+  const now = Date.now();
+  const record = ipRequestCounts.get(ip);
+  if (!record || now > record.resetTime) {
+    ipRequestCounts.set(ip, { count: 1, resetTime: now + windowMs });
+    return false;
+  }
+  record.count++;
+  return record.count > maxRequests;
 }
 
 /**
@@ -30,22 +52,22 @@ function generateDemoState2026(searchParams?: URLSearchParams): ElectionState {
   const secoesApuradas = Math.round((pct / 100) * totalSecoes);
   const totalVotosValidos = 78540200;
 
-  // Candidatos configuráveis via URL para testes dinâmicos (ex: Renan Santos, Samara, etc.)
-  const cand1Nome = searchParams?.get('cand1') || 'LULA';
-  const cand1Partido = searchParams?.get('partido1') || 'PT';
-  const cand1Pct = searchParams?.get('pct1') ? parseFloat(searchParams.get('pct1')!) : 47.85;
+  // Candidatos configuráveis via URL para testes dinâmicos com sanitização
+  const cand1Nome = (searchParams?.get('cand1') || 'LULA').slice(0, 40);
+  const cand1Partido = (searchParams?.get('partido1') || 'PT').slice(0, 15);
+  const cand1Pct = parseSafeFloat(searchParams?.get('pct1'), 47.85);
 
-  const cand2Nome = searchParams?.get('cand2') || 'FLÁVIO BOLSONARO';
-  const cand2Partido = searchParams?.get('partido2') || 'PL';
-  const cand2Pct = searchParams?.get('pct2') ? parseFloat(searchParams.get('pct2')!) : 44.10;
+  const cand2Nome = (searchParams?.get('cand2') || 'FLÁVIO BOLSONARO').slice(0, 40);
+  const cand2Partido = (searchParams?.get('partido2') || 'PL').slice(0, 15);
+  const cand2Pct = parseSafeFloat(searchParams?.get('pct2'), 44.10);
 
-  const cand3Nome = searchParams?.get('cand3') || 'RONALDO CAIADO';
-  const cand3Partido = searchParams?.get('partido3') || 'UNIÃO';
-  const cand3Pct = searchParams?.get('pct3') ? parseFloat(searchParams.get('pct3')!) : 4.80;
+  const cand3Nome = (searchParams?.get('cand3') || 'RONALDO CAIADO').slice(0, 40);
+  const cand3Partido = (searchParams?.get('partido3') || 'UNIÃO').slice(0, 15);
+  const cand3Pct = parseSafeFloat(searchParams?.get('pct3'), 4.80);
 
-  const cand4Nome = searchParams?.get('cand4') || 'ROMEU ZEMA';
-  const cand4Partido = searchParams?.get('partido4') || 'NOVO';
-  const cand4Pct = searchParams?.get('pct4') ? parseFloat(searchParams.get('pct4')!) : 2.25;
+  const cand4Nome = (searchParams?.get('cand4') || 'ROMEU ZEMA').slice(0, 40);
+  const cand4Partido = (searchParams?.get('partido4') || 'NOVO').slice(0, 15);
+  const cand4Pct = parseSafeFloat(searchParams?.get('pct4'), 2.25);
 
   const candOutrosPct = Math.max(0, Number((100 - (cand1Pct + cand2Pct + cand3Pct + cand4Pct)).toFixed(2)));
 
@@ -135,10 +157,24 @@ function generateDemoState2026(searchParams?: URLSearchParams): ElectionState {
 }
 
 export async function GET(request: NextRequest) {
+  // 1. Blindagem de Rate Limiting por IP
+  const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0].trim() || '127.0.0.1';
+  if (isRateLimited(clientIp, 80, 60000)) {
+    return NextResponse.json(
+      { erro: 'Limite de requisições excedido. Tente novamente em alguns segundos.' },
+      { status: 429, headers: { 'Retry-After': '30' } }
+    );
+  }
+
   const { searchParams } = new URL(request.url);
   const forceDemo = searchParams.get('demo') === 'true';
-  const electionCode = searchParams.get('code') || DEFAULT_ELECTION_CODE;
-  const cycle = searchParams.get('cycle') || DEFAULT_ELECTION_CYCLE;
+
+  // 2. Validação rigorosa dos parâmetros de pleito contra SSRF / injeções
+  const rawCode = searchParams.get('code') || DEFAULT_ELECTION_CODE;
+  const rawCycle = searchParams.get('cycle') || DEFAULT_ELECTION_CYCLE;
+
+  const electionCode = /^\d{1,6}$/.test(rawCode) ? rawCode : DEFAULT_ELECTION_CODE;
+  const cycle = /^ele\d{4}$/.test(rawCycle) ? rawCycle : DEFAULT_ELECTION_CYCLE;
 
   // Se o usuário solicitou demo explicitamente ou se a variável de ambiente força demo
   if (forceDemo || process.env.NEXT_PUBLIC_DEMO_MODE === 'true') {
@@ -151,7 +187,7 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // Montar a URL do CDN do TSE
+  // Montar a URL do CDN do TSE de forma sanitizada
   const paddedCode = electionCode.padStart(6, '0');
   const tseUrl = `https://resultados.tse.jus.br/oficial/${cycle}/${electionCode}/dados-simplificados/br/br-c0001-e${paddedCode}-r.json`;
 
@@ -193,9 +229,9 @@ export async function GET(request: NextRequest) {
       const percentual = parseTSEFloat(c.pvap);
       const partido = cleanPartyName(c.cc);
       const candObj: CandidateResult = {
-        id: `cand-${c.n}`,
-        nome: c.nm || 'CANDIDATO',
-        numero: c.n,
+        id: `cand-${c.n || idx}`,
+        nome: (c.nm || 'CANDIDATO').slice(0, 40),
+        numero: c.n || String(idx + 1),
         partido,
         votos,
         percentual,
