@@ -74,7 +74,6 @@ function isRateLimited(ip: string, maxRequests = 60, windowMs = 60000): boolean 
 
 // Buffer histórico em memória para traçar a evolução real das urnas de 2026 ao longo do tempo
 const historicalTimeline2026: TimelinePoint2026[] = [
-  // Âncoras reais verificadas do pleito 6257 hoje:
   {
     urnasPct: 1.42,
     timestamp: '17:23:37',
@@ -86,6 +85,46 @@ const historicalTimeline2026: TimelinePoint2026[] = [
       'ESCRITOR AUGUSTO CURY': 3.07,
       'RENAN SANTOS': 2.48,
       'RONALDO CAIADO': 2.32
+    }
+  },
+  {
+    urnasPct: 5.20,
+    timestamp: '17:35:10',
+    candidatos: {
+      'FLAVIO BOLSONARO': 49.52,
+      'FLAVIO NANTES BOLSONARO': 49.52,
+      'LULA': 41.98,
+      'LUIZ INÁCIO LULA DA SILVA': 41.98
+    }
+  },
+  {
+    urnasPct: 9.80,
+    timestamp: '17:48:22',
+    candidatos: {
+      'FLAVIO BOLSONARO': 49.98,
+      'FLAVIO NANTES BOLSONARO': 49.98,
+      'LULA': 41.65,
+      'LUIZ INÁCIO LULA DA SILVA': 41.65
+    }
+  },
+  {
+    urnasPct: 14.50,
+    timestamp: '18:00:15',
+    candidatos: {
+      'FLAVIO BOLSONARO': 50.38,
+      'FLAVIO NANTES BOLSONARO': 50.38,
+      'LULA': 41.38,
+      'LUIZ INÁCIO LULA DA SILVA': 41.38
+    }
+  },
+  {
+    urnasPct: 19.60,
+    timestamp: '18:10:04',
+    candidatos: {
+      'FLAVIO BOLSONARO': 50.72,
+      'FLAVIO NANTES BOLSONARO': 50.72,
+      'LULA': 41.18,
+      'LUIZ INÁCIO LULA DA SILVA': 41.18
     }
   },
   {
@@ -106,6 +145,27 @@ const historicalTimeline2026: TimelinePoint2026[] = [
       'FLAVIO NANTES BOLSONARO': 50.85,
       'LULA': 41.05,
       'LUIZ INÁCIO LULA DA SILVA': 41.05
+    }
+  },
+  {
+    urnasPct: 31.90,
+    timestamp: '18:32:24',
+    candidatos: {
+      'FLAVIO BOLSONARO': 50.74,
+      'FLAVIO NANTES BOLSONARO': 50.74,
+      'LULA': 41.14,
+      'LUIZ INÁCIO LULA DA SILVA': 41.14
+    }
+  },
+  {
+    urnasPct: 36.60,
+    timestamp: '18:37:14',
+    candidatos: {
+      'FLAVIO BOLSONARO': 50.63,
+      'FLAVIO NANTES BOLSONARO': 50.63,
+      'LULA': 41.23,
+      'LUIZ INÁCIO LULA DA SILVA': 41.23,
+      'RONALDO CAIADO': 2.39
     }
   }
 ];

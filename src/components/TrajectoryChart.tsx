@@ -36,6 +36,35 @@ function findCandidatePct(cand: CandidateResult | undefined, candsMap: Record<st
   return null;
 }
 
+/**
+ * Constrói uma curva spline Catmull-Rom para curvas cúbicas de Bézier no SVG,
+ * garantindo passagem matemática exata por todos os pontos com transição suave e contínua.
+ */
+function smoothSvgPath(points: Array<{ x: number; y: number }>, tension = 0.75): string {
+  if (points.length < 2) return '';
+  if (points.length === 2) {
+    return `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)} L ${points[1].x.toFixed(1)} ${points[1].y.toFixed(1)}`;
+  }
+
+  let path = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
+
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = i > 0 ? points[i - 1] : { x: 2 * points[0].x - points[1].x, y: 2 * points[0].y - points[1].y };
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = i < points.length - 2 ? points[i + 2] : { x: 2 * points[points.length - 1].x - points[points.length - 2].x, y: 2 * points[points.length - 1].y - points[points.length - 2].y };
+
+    const cp1x = p1.x + ((p2.x - p0.x) / 6) * tension;
+    const cp1y = p1.y + ((p2.y - p0.y) / 6) * tension;
+    const cp2x = p2.x - ((p3.x - p1.x) / 6) * tension;
+    const cp2y = p2.y - ((p3.y - p1.y) / 6) * tension;
+
+    path += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+  }
+
+  return path;
+}
+
 export function TrajectoryChart({
   timeline2022,
   timeline2026,
@@ -115,18 +144,19 @@ export function TrajectoryChart({
     yTicks.sort((a, b) => a - b);
   }
 
-  // Traçado 2022 (Referência histórica dos 2 primeiros de 2022)
-  const sample2022 = timeline2022.filter((p, i) => i === 0 || i % 6 === 0 || i === timeline2022.length - 1);
+  // Traçado 2022 (Referência histórica suavizada dos 2 primeiros de 2022)
+  const sample2022 = timeline2022.filter((p, i) => i === 0 || i % 4 === 0 || i === timeline2022.length - 1);
 
-  const pathLula2022 = sample2022
+  const ptsLula2022 = sample2022
     .filter(p => p.secoesTotalizadasPct > 0)
-    .map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${scaleX(p.secoesTotalizadasPct).toFixed(1)} ${scaleY(p.lulaPct).toFixed(1)}`)
-    .join(' ');
+    .map(p => ({ x: scaleX(p.secoesTotalizadasPct), y: scaleY(p.lulaPct) }));
 
-  const pathBolso2022 = sample2022
+  const ptsBolso2022 = sample2022
     .filter(p => p.secoesTotalizadasPct > 0)
-    .map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${scaleX(p.secoesTotalizadasPct).toFixed(1)} ${scaleY(p.bolsonaroPct).toFixed(1)}`)
-    .join(' ');
+    .map(p => ({ x: scaleX(p.secoesTotalizadasPct), y: scaleY(p.bolsonaroPct) }));
+
+  const pathLula2022 = smoothSvgPath(ptsLula2022, 0.7);
+  const pathBolso2022 = smoothSvgPath(ptsBolso2022, 0.7);
 
   // Mapear pontos reais para coordenadas do SVG
   const pointsCand1: Array<{ x: number; y: number; pct: number }> = [];
@@ -144,14 +174,9 @@ export function TrajectoryChart({
     }
   }
 
-  // Traçar linhas conectando estritamente pontos reais coletados ao longo da apuração
-  const pathCand12026 = pointsCand1.length > 1
-    ? pointsCand1.map((pt, idx) => `${idx === 0 ? 'M' : 'L'} ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`).join(' ')
-    : '';
-
-  const pathCand22026 = pointsCand2.length > 1
-    ? pointsCand2.map((pt, idx) => `${idx === 0 ? 'M' : 'L'} ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`).join(' ')
-    : '';
+  // Traçar linhas perfeitamente suavizadas conectando os pontos reais da apuração
+  const pathCand12026 = smoothSvgPath(pointsCand1, 0.75);
+  const pathCand22026 = smoothSvgPath(pointsCand2, 0.75);
 
   const currentX = scaleX(currentPct2026);
 
@@ -290,9 +315,9 @@ export function TrajectoryChart({
               key={`c1-pt-${idx}`}
               cx={pt.x}
               cy={pt.y}
-              r="2"
+              r="1.5"
               fill={cand1Cor}
-              opacity="0.5"
+              opacity="0.35"
             />
           ))}
           {pointsCand2.length > 1 && pointsCand2.slice(0, -1).map((pt, idx) => (
@@ -300,9 +325,9 @@ export function TrajectoryChart({
               key={`c2-pt-${idx}`}
               cx={pt.x}
               cy={pt.y}
-              r="2"
+              r="1.5"
               fill={cand2Cor}
-              opacity="0.5"
+              opacity="0.35"
             />
           ))}
 
