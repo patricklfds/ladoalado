@@ -83,9 +83,11 @@ export function point2022ToElectionState(point: TimelinePoint2022): ElectionStat
 }
 
 /**
- * Busca Binária O(log n) para encontrar o ponto mais próximo na timeline de 2022 pelo % de urnas
+ * Interpolação Exata por % de Urnas:
+ * Garante que em 'modo urnas', se 2026 está com X%, 2022 terá EXATAMENTE X% de urnas,
+ * com os percentuais dos candidatos interpolados de forma contínua e precisa.
  */
-export function findClosestByUrnas(
+export function interpolateByUrnas(
   timeline: TimelinePoint2022[],
   targetPct: number
 ): TimelinePoint2022 {
@@ -93,41 +95,73 @@ export function findClosestByUrnas(
     throw new Error('Timeline 2022 vazia.');
   }
 
-  if (targetPct <= timeline[0].secoesTotalizadasPct) {
-    return timeline[0];
+  const clampedPct = Math.max(0, Math.min(100, targetPct));
+
+  if (clampedPct <= 0) {
+    return { ...timeline[0], secoesTotalizadasPct: 0 };
   }
 
   const last = timeline[timeline.length - 1];
-  if (targetPct >= last.secoesTotalizadasPct) {
-    return last;
+  if (clampedPct >= last.secoesTotalizadasPct) {
+    return { ...last, secoesTotalizadasPct: clampedPct };
   }
 
-  let low = 0;
-  let high = timeline.length - 1;
-
-  while (low <= high) {
-    const mid = Math.floor((low + high) / 2);
-    const midVal = timeline[mid].secoesTotalizadasPct;
-
-    if (midVal === targetPct) {
-      return timeline[mid];
-    }
-
-    if (midVal < targetPct) {
-      low = mid + 1;
-    } else {
-      high = mid - 1;
-    }
+  // Localizar os dois pontos vizinhos entre os quais clampedPct se encontra
+  let idx = 0;
+  while (idx < timeline.length - 1 && timeline[idx + 1].secoesTotalizadasPct < clampedPct) {
+    idx++;
   }
 
-  // Entre high e low: escolher o mais próximo
-  const p1 = timeline[Math.max(0, high)];
-  const p2 = timeline[Math.min(timeline.length - 1, low)];
+  const p1 = timeline[idx];
+  const p2 = timeline[Math.min(idx + 1, timeline.length - 1)];
 
-  const diff1 = Math.abs(p1.secoesTotalizadasPct - targetPct);
-  const diff2 = Math.abs(p2.secoesTotalizadasPct - targetPct);
+  if (p1.secoesTotalizadasPct === p2.secoesTotalizadasPct) {
+    return { ...p1, secoesTotalizadasPct: clampedPct };
+  }
 
-  return diff1 <= diff2 ? p1 : p2;
+  // Fração de interpolação t entre p1 e p2
+  const t = (clampedPct - p1.secoesTotalizadasPct) / (p2.secoesTotalizadasPct - p1.secoesTotalizadasPct);
+
+  const lulaPct = Number((p1.lulaPct + (p2.lulaPct - p1.lulaPct) * t).toFixed(2));
+  const bolsonaroPct = Number((p1.bolsonaroPct + (p2.bolsonaroPct - p1.bolsonaroPct) * t).toFixed(2));
+  const tebetPct = Number((p1.tebetPct + (p2.tebetPct - p1.tebetPct) * t).toFixed(2));
+  const ciroPct = Number((p1.ciroPct + (p2.ciroPct - p1.ciroPct) * t).toFixed(2));
+  const outrosPct = Number(Math.max(0, 100 - (lulaPct + bolsonaroPct + tebetPct + ciroPct)).toFixed(2));
+
+  // Interpolação do horário em que 2022 atingiu essa porcentagem
+  const exactMinutesFrom17 = p1.minuteIndex + (p2.minuteIndex - p1.minuteIndex) * t;
+  const totalMin = 17 * 60 + exactMinutesFrom17;
+  const h = Math.floor(totalMin / 60) % 24;
+  const m = Math.floor(totalMin % 60);
+  const formattedTime = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+
+  const secoesApuradas = Math.round((clampedPct / 100) * p1.totalSecoes);
+  const totalVotosValidos = Math.round((clampedPct / 100) * 118580080);
+
+  const lulaVotos = Math.round((lulaPct / 100) * totalVotosValidos);
+  const bolsonaroVotos = Math.round((bolsonaroPct / 100) * totalVotosValidos);
+  const tebetVotos = Math.round((tebetPct / 100) * totalVotosValidos);
+  const ciroVotos = Math.round((ciroPct / 100) * totalVotosValidos);
+  const outrosVotos = Math.max(0, totalVotosValidos - (lulaVotos + bolsonaroVotos + tebetVotos + ciroVotos));
+
+  return {
+    timestamp: formattedTime,
+    minuteIndex: Math.round(exactMinutesFrom17),
+    secoesTotalizadasPct: clampedPct, // EXATAMENTE O MESMO PERCENTUAL DE 2026!
+    totalSecoes: p1.totalSecoes,
+    secoesApuradas,
+    lulaPct,
+    lulaVotos,
+    bolsonaroPct,
+    bolsonaroVotos,
+    tebetPct,
+    tebetVotos,
+    ciroPct,
+    ciroVotos,
+    outrosPct,
+    outrosVotos,
+    totalVotosValidos
+  };
 }
 
 /**
@@ -173,11 +207,14 @@ export function calculatePaceDifferenceMinutes(
   if (parts2026.length < 2) return 0;
 
   const currentMinutes2026 = parseInt(parts2026[0], 10) * 60 + parseInt(parts2026[1], 10);
-  const minutesSince17_2026 = Math.max(0, currentMinutes2026 - 17 * 60);
 
-  // minutos que 2022 levou para chegar neste %
+  // Se a consulta for feita antes das 17h e não for simulação de noite, não distorcer o cálculo
+  if (currentMinutes2026 < 17 * 60) {
+    return 0;
+  }
+
+  const minutesSince17_2026 = currentMinutes2026 - 17 * 60;
   const minutesSince17_2022 = matching2022Point.minuteIndex;
 
-  // Se 2022 levou 120 min e 2026 levou 100 min: 2026 está +20 min adiantada
   return minutesSince17_2022 - minutesSince17_2026;
 }

@@ -18,6 +18,10 @@ export default function HomePage() {
     estado2022,
     deltaLider,
     deltaSegundo,
+    deltaLula,
+    deltaOposicao,
+    margem2026,
+    margem2022,
     ritmoMinutos,
     tempoRestante,
     isAtualizando,
@@ -63,6 +67,10 @@ export default function HomePage() {
           modo={modo}
           deltaLider={deltaLider}
           deltaSegundo={deltaSegundo}
+          deltaLula={deltaLula}
+          deltaOposicao={deltaOposicao}
+          margem2026={margem2026}
+          margem2022={margem2022}
         />
 
         {/* Gráfico Sparkline de Trajetória */}
@@ -70,6 +78,10 @@ export default function HomePage() {
           timeline2022={timeline2022}
           pontosSessao2026={pontosSessao2026}
           currentPct2026={estado2026?.secoesTotalizadasPct || 0}
+          cand1Pct2026={estado2026?.candidatos[0]?.percentual}
+          cand2Pct2026={estado2026?.candidatos[1]?.percentual}
+          cand1Pct2022={estado2022?.candidatos.find(c => c.nome.includes('LULA'))?.percentual}
+          cand2Pct2022={estado2022?.candidatos.find(c => c.nome.includes('BOLSONARO'))?.percentual}
         />
 
         {/* Tabela dos Demais Candidatos */}

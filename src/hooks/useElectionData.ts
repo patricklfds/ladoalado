@@ -9,7 +9,7 @@ import type {
 } from '@/lib/types';
 import {
   point2022ToElectionState,
-  findClosestByUrnas,
+  interpolateByUrnas,
   findByTime,
   calculatePaceDifferenceMinutes
 } from '@/lib/comparator';
@@ -129,13 +129,18 @@ export function useElectionData() {
   let matching2022State: ElectionState | null = null;
   let deltaLider = 0;
   let deltaSegundo = 0;
+  let deltaLula = 0;
+  let deltaOposicao = 0;
+  let margem2026 = 0;
+  let margem2022 = 0;
   let ritmoMinutos = 0;
 
   if (estado2026 && timeline2022.length > 0) {
     let point2022: TimelinePoint2022;
 
     if (modo === 'urnas') {
-      point2022 = findClosestByUrnas(timeline2022, estado2026.secoesTotalizadasPct);
+      // Interpolação matemática exata: 2022 terá exatamente o mesmo % de urnas de 2026!
+      point2022 = interpolateByUrnas(timeline2022, estado2026.secoesTotalizadasPct);
     } else {
       point2022 = findByTime(timeline2022, estado2026.timestamp.slice(0, 5));
     }
@@ -143,7 +148,7 @@ export function useElectionData() {
     matching2022State = point2022ToElectionState(point2022);
     ritmoMinutos = calculatePaceDifferenceMinutes(estado2026.timestamp, point2022);
 
-    // Calcular deltas dos candidatos principais
+    // Candidatos 1º e 2º colocados de cada ano
     const c1_2026 = estado2026.candidatos[0]?.percentual || 0;
     const c2_2026 = estado2026.candidatos[1]?.percentual || 0;
     const c1_2022 = matching2022State.candidatos[0]?.percentual || 0;
@@ -151,6 +156,18 @@ export function useElectionData() {
 
     deltaLider = Number((c1_2026 - c1_2022).toFixed(2));
     deltaSegundo = Number((c2_2026 - c2_2022).toFixed(2));
+
+    margem2026 = Number((c1_2026 - c2_2026).toFixed(2));
+    margem2022 = Number((c1_2022 - c2_2022).toFixed(2));
+
+    // Comparação nominal direta: Lula 2026 vs Lula 2022 e Oposição 2026 vs Bolsonaro 2022
+    const lula2026 = estado2026.candidatos.find(c => c.nome.includes('LULA'))?.percentual || c1_2026;
+    const lula2022 = matching2022State.candidatos.find(c => c.nome.includes('LULA'))?.percentual || point2022.lulaPct;
+    deltaLula = Number((lula2026 - lula2022).toFixed(2));
+
+    const opo2026 = estado2026.candidatos.find(c => !c.nome.includes('LULA') && c.posicao <= 2)?.percentual || c2_2026;
+    const bolso2022 = matching2022State.candidatos.find(c => c.nome.includes('BOLSONARO'))?.percentual || point2022.bolsonaroPct;
+    deltaOposicao = Number((opo2026 - bolso2022).toFixed(2));
   }
 
   return {
@@ -160,6 +177,10 @@ export function useElectionData() {
     estado2022: matching2022State,
     deltaLider,
     deltaSegundo,
+    deltaLula,
+    deltaOposicao,
+    margem2026,
+    margem2022,
     ritmoMinutos,
     tempoRestante,
     isCarregando,

@@ -55,8 +55,12 @@ export interface ComparisonData {
   ano2026: ElectionState;
   ano2022: ElectionState;
   modo: ComparisonMode;
-  deltaLider: number;            // 2026 - 2022 (% do líder ou bloco equivalente)
-  deltaSegundo: number;          // 2026 - 2022
+  deltaLider: number;            // 2026 1º lugar - 2022 1º lugar
+  deltaSegundo: number;          // 2026 2º lugar - 2022 2º lugar
+  deltaLula: number;             // Lula 2026 - Lula 2022
+  deltaOposicao: number;         // Oposição 2026 - Bolsonaro 2022
+  margem2026: number;            // Margem entre 1º e 2º em 2026
+  margem2022: number;            // Margem entre 1º e 2º em 2022
   ritmoMinutos: number;          // Diferença de velocidade da apuração em minutos
   tempoRestanteSegundos: number; // Para o countdown de 60s
   isAtualizando: boolean;

@@ -43,11 +43,8 @@ function parseTSEInt(value: string | undefined): number {
  */
 function generateDemoState2026(): ElectionState {
   const now = new Date();
-  const timeStr = now.toLocaleTimeString('pt-BR', {
-    timeZone: 'America/Sao_Paulo',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
+  // Para simulação realista de 64.8% de urnas, o horário de apuração no Brasil é por volta das 18:48
+  const timeStr = '18:48:00';
 
   // Simulação de apuração realista em 64.80%
   const totalSecoes = 492000;

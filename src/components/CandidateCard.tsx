@@ -6,9 +6,18 @@ import type { CandidateResult } from '@/lib/types';
 interface CandidateCardProps {
   candidato: CandidateResult;
   destaque?: boolean;
+  badgeComparativo?: {
+    label: string;
+    delta: number;
+    percentualRef?: number;
+  };
 }
 
-export function CandidateCard({ candidato, destaque = false }: CandidateCardProps) {
+export function CandidateCard({
+  candidato,
+  destaque = false,
+  badgeComparativo
+}: CandidateCardProps) {
   const votosFormatados = candidato.votos.toLocaleString('pt-BR');
   const pctFormatado = candidato.percentual.toFixed(2);
 
@@ -45,8 +54,24 @@ export function CandidateCard({ candidato, destaque = false }: CandidateCardProp
             {candidato.nome}
           </h3>
 
-          <div className="mt-1 text-xs font-mono text-[var(--muted)]">
-            {votosFormatados} votos válidos
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-mono text-[var(--muted)]">
+            <span>{votosFormatados} votos</span>
+            {badgeComparativo && (
+              <span
+                className={`inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold ${
+                  badgeComparativo.delta > 0
+                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                    : badgeComparativo.delta < 0
+                    ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
+                    : 'bg-[var(--accent)] text-[var(--muted)]'
+                }`}
+              >
+                {badgeComparativo.delta > 0 ? `▲ +${badgeComparativo.delta.toFixed(2)}%` : `▼ ${badgeComparativo.delta.toFixed(2)}%`}
+                <span className="font-normal opacity-80 ml-1">
+                  ({badgeComparativo.label} {badgeComparativo.percentualRef?.toFixed(2)}%)
+                </span>
+              </span>
+            )}
           </div>
         </div>
 
