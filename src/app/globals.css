@@ -2,84 +2,94 @@
 
 @layer base {
   :root {
-    --background: #FBFBF9;
-    --foreground: #111113;
-    --muted: #666663;
-    --border: #E5E5E2;
-    --card: #FFFFFF;
-    --card-foreground: #111113;
-    --accent: #F2F2EE;
-    --accent-foreground: #111113;
+    --bg: #FAFAF8;
+    --fg: #111111;
+    --fg-muted: #737373;
+    --fg-subtle: #999999;
+    --border: #E8E8E6;
+    --border-subtle: #F0F0EE;
+    --surface: #FFFFFF;
+    --surface-hover: #F5F5F3;
+    --accent: #EFEFEc;
+    
+    /* Cores políticas neutras e institucionais */
+    --color-pt: #C2221F;
+    --color-pl: #1D4ED8;
+    --color-positive: #15803D;
+    --color-negative: #B91C1C;
   }
 
   .dark {
-    --background: #0C0C0E;
-    --foreground: #EDEDEA;
-    --muted: #888884;
-    --border: #202024;
-    --card: #141417;
-    --card-foreground: #EDEDEA;
+    --bg: #0A0A0B;
+    --fg: #F4F4F5;
+    --fg-muted: #8E8E93;
+    --fg-subtle: #52525B;
+    --border: #1E1E22;
+    --border-subtle: #141416;
+    --surface: #111113;
+    --surface-hover: #18181B;
     --accent: #1C1C20;
-    --accent-foreground: #EDEDEA;
+    
+    --color-pt: #E03E3E;
+    --color-pl: #3B82F6;
+    --color-positive: #22C55E;
+    --color-negative: #EF4444;
   }
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-muted: var(--muted);
+  --color-background: var(--bg);
+  --color-foreground: var(--fg);
+  --color-muted: var(--fg-muted);
+  --color-subtle: var(--fg-subtle);
   --color-border: var(--border);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
+  --color-border-subtle: var(--border-subtle);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
   --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
   --font-sans: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-serif: var(--font-serif), Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-serif: var(--font-serif), Georgia, Cambria, "Times New Roman", serif;
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 body {
-  background-color: var(--background);
-  color: var(--foreground);
+  background-color: var(--bg);
+  color: var(--fg);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-/* Números tabulares sem Cumulative Layout Shift (CLS) */
+/* Números tabulares perfeitos (Zero CLS) */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
 }
 
-/* Divisores finos editoriais */
-.hairline-border {
-  border-width: 1px;
-  border-style: solid;
-  border-color: var(--border);
-}
-
+/* Linha hairline fina de 1px */
 .hairline-b {
   border-bottom: 1px solid var(--border);
 }
-
 .hairline-t {
   border-top: 1px solid var(--border);
 }
-
 .hairline-r {
   border-right: 1px solid var(--border);
 }
+.hairline-l {
+  border-left: 1px solid var(--border);
+}
 
-/* Scrollbar refinada */
+/* Scrollbar invisível / minimalista */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: var(--border);
-  border-radius: 3px;
+  border-radius: 2px;
 }

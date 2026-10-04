@@ -2,13 +2,12 @@
 
 import React from 'react';
 import { useElectionData } from '@/hooks/useElectionData';
-import { Masthead } from '@/components/Masthead';
-import { LiveCycleBar } from '@/components/LiveCycleBar';
-import { CountingGauge } from '@/components/CountingGauge';
-import { ArenaLadoALado } from '@/components/ArenaLadoALado';
-import { SecondaryTable } from '@/components/SecondaryTable';
-import { SparklineChart } from '@/components/SparklineChart';
-import { EditorialFooter } from '@/components/EditorialFooter';
+import { Header } from '@/components/Header';
+import { ProgressHeader } from '@/components/ProgressHeader';
+import { ComparisonArena } from '@/components/ComparisonArena';
+import { TrajectoryChart } from '@/components/TrajectoryChart';
+import { OtherCandidates } from '@/components/OtherCandidates';
+import { Footer } from '@/components/Footer';
 
 export default function HomePage() {
   const {
@@ -25,43 +24,37 @@ export default function HomePage() {
     ritmoMinutos,
     tempoRestante,
     isAtualizando,
-    erro,
     timeline2022,
-    pontosSessao2026,
     recarregarAgora
   } = useElectionData();
 
+  const isDemo = estado2026?.origem.includes('demo');
+
   return (
-    <div className="min-h-screen flex flex-col bg-[var(--background)] text-[var(--foreground)]">
-      {/* 1. Masthead Editorial */}
-      <Masthead
+    <div className="min-h-screen flex flex-col bg-[var(--bg)] text-[var(--fg)] selection:bg-[var(--fg)] selection:text-[var(--bg)]">
+      {/* 1. Header Minimalista */}
+      <Header
         modo={modo}
         setModo={setModo}
-        statusOrigem={estado2026?.origem}
-      />
-
-      {/* 2. Barra de Ciclo de 60s com Countdown */}
-      <LiveCycleBar
+        timestamp2026={estado2026?.timestamp.slice(0, 5)}
         tempoRestante={tempoRestante}
-        totalSegundos={60}
         isAtualizando={isAtualizando}
-        horarioUltimaAtualizacao={estado2026?.timestamp}
         recarregarAgora={recarregarAgora}
-        erro={erro}
+        isDemo={isDemo}
       />
 
-      {/* 3. Termômetro Geral da Totalização de Urnas */}
-      <CountingGauge
-        estado2026={estado2026}
-        estado2022={estado2022}
-        modo={modo}
-        ritmoMinutos={ritmoMinutos}
-      />
+      {/* 2. Conteúdo Centralizado com Amplo Respiro Editorial */}
+      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6">
+        {/* Termômetro Geral Linear */}
+        <ProgressHeader
+          estado2026={estado2026}
+          estado2022={estado2022}
+          modo={modo}
+          ritmoMinutos={ritmoMinutos}
+        />
 
-      {/* 4. Conteúdo Principal */}
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-4 sm:py-6">
-        {/* Arena Lado a Lado dos Líderes */}
-        <ArenaLadoALado
+        {/* Arena Principal Lado a Lado */}
+        <ComparisonArena
           estado2026={estado2026}
           estado2022={estado2022}
           modo={modo}
@@ -73,10 +66,9 @@ export default function HomePage() {
           margem2022={margem2022}
         />
 
-        {/* Gráfico Sparkline de Trajetória */}
-        <SparklineChart
+        {/* Gráfico de Trajetória SVG Minimalista */}
+        <TrajectoryChart
           timeline2022={timeline2022}
-          pontosSessao2026={pontosSessao2026}
           currentPct2026={estado2026?.secoesTotalizadasPct || 0}
           cand1Pct2026={estado2026?.candidatos[0]?.percentual}
           cand2Pct2026={estado2026?.candidatos[1]?.percentual}
@@ -84,18 +76,18 @@ export default function HomePage() {
           cand2Pct2022={estado2022?.candidatos.find(c => c.nome.includes('BOLSONARO'))?.percentual}
         />
 
-        {/* Tabela dos Demais Candidatos */}
-        <SecondaryTable
+        {/* Demais Candidatos em Lista Tabular Limpa */}
+        <OtherCandidates
           candidatos2026={estado2026?.candidatos || []}
           candidatos2022={estado2022?.candidatos || []}
         />
-      </main>
 
-      {/* 5. Rodapé Editorial de Transparência */}
-      <EditorialFooter
-        origemDados={estado2026?.origem}
-        dataHoraISO={estado2026?.dataHoraISO}
-      />
+        {/* Rodapé Silencioso */}
+        <Footer
+          timestampISO={estado2026?.dataHoraISO}
+          origem={estado2026?.origem}
+        />
+      </main>
     </div>
   );
 }
