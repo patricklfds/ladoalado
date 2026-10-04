@@ -37,33 +37,6 @@ export function ComparisonArena({
 
   return (
     <section className="py-8 sm:py-10 border-b border-[var(--border)]">
-      {/* Resumo da Margem de Liderança (100% Dinâmico) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-6 text-xs text-[var(--fg-muted)]">
-        <div className="font-mono">
-          <span className="text-[var(--fg-subtle)] mr-2">comparação direta:</span>
-          {modo === 'urnas' ? (
-            <span>
-              com exatamente <strong className="text-[var(--fg)]">{estado2026?.secoesTotalizadasPct.toFixed(2)}%</strong> das urnas em ambos os anos
-            </span>
-          ) : (
-            <span>
-              às <strong className="text-[var(--fg)]">{estado2026?.timestamp.slice(0, 5)}</strong> de Brasília
-            </span>
-          )}
-        </div>
-
-        {margem2026 > 0 && lider2026 && (
-          <div className="font-mono text-[11px] text-[var(--fg)]">
-            Vantagem de {formatCandidateName(lider2026.nome)}: <strong className="font-semibold">+{margem2026.toFixed(2)}%</strong>
-            {margem2022 > 0 && lider2022 && (
-              <span className="text-[var(--fg-muted)] ml-1.5">
-                (em 2022: +{margem2022.toFixed(2)}% para {formatCandidateName(lider2022.nome)})
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-
       {/* Grid Principal Lado a Lado */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
         {/* ================= COLUNA 2026 (HOJE) ================= */}
@@ -77,9 +50,19 @@ export function ComparisonArena({
                 ao vivo
               </span>
             </div>
-            <span className="text-xs font-mono tabular-nums text-[var(--fg-muted)]">
-              {estado2026?.secoesTotalizadasPct.toFixed(2)}% apurado
-            </span>
+            <div className="text-right font-mono text-xs">
+              {lider2026 && margem2026 > 0 ? (
+                <span>
+                  <span className="font-semibold text-[var(--fg)]">{formatCandidateName(lider2026.nome)}</span>{' '}
+                  <span className="text-[var(--fg-muted)]">lidera</span>{' '}
+                  <span className="font-semibold tabular-nums text-[var(--fg)]">+{margem2026.toFixed(2)}%</span>
+                </span>
+              ) : (
+                <span className="text-xs font-mono tabular-nums text-[var(--fg-muted)]">
+                  {estado2026?.secoesTotalizadasPct.toFixed(2)}% apurado
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="space-y-7">
@@ -184,9 +167,19 @@ export function ComparisonArena({
                 {modo === 'urnas' ? `atingido às ${estado2022?.timestamp}` : `às ${estado2022?.timestamp}`}
               </span>
             </div>
-            <span className="text-xs font-mono tabular-nums text-[var(--fg-subtle)]">
-              {estado2022?.secoesTotalizadasPct.toFixed(2)}% apurado
-            </span>
+            <div className="text-right font-mono text-xs">
+              {lider2022 && margem2022 > 0 ? (
+                <span className="text-[var(--fg-muted)]">
+                  <span className="font-medium text-[var(--fg-muted)]">{formatCandidateName(lider2022.nome)}</span>{' '}
+                  <span className="text-[var(--fg-subtle)]">liderava</span>{' '}
+                  <span className="font-medium tabular-nums text-[var(--fg-muted)]">+{margem2022.toFixed(2)}%</span>
+                </span>
+              ) : (
+                <span className="text-xs font-mono tabular-nums text-[var(--fg-subtle)]">
+                  {estado2022?.secoesTotalizadasPct.toFixed(2)}% apurado
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="space-y-7">
