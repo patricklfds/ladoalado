@@ -29,6 +29,7 @@ export default function HomePage() {
   } = useElectionData();
 
   const isDemo = estado2026?.origem.includes('demo');
+  const cands2026 = [...(estado2026?.candidatos || [])].sort((a, b) => b.percentual - a.percentual);
 
   return (
     <div className="min-h-screen flex flex-col bg-[var(--bg)] text-[var(--fg)] selection:bg-[var(--fg)] selection:text-[var(--bg)]">
@@ -66,14 +67,12 @@ export default function HomePage() {
           margem2022={margem2022}
         />
 
-        {/* Gráfico de Trajetória SVG Minimalista */}
+        {/* Gráfico de Trajetória SVG 100% Dinâmico */}
         <TrajectoryChart
           timeline2022={timeline2022}
           currentPct2026={estado2026?.secoesTotalizadasPct || 0}
-          cand1Pct2026={estado2026?.candidatos.find(c => c.nome.includes('LULA'))?.percentual || estado2026?.candidatos[0]?.percentual}
-          cand2Pct2026={estado2026?.candidatos.find(c => c.nome.includes('BOLSONARO'))?.percentual || estado2026?.candidatos[1]?.percentual}
-          cand1Pct2022={estado2022?.candidatos.find(c => c.nome.includes('LULA'))?.percentual}
-          cand2Pct2022={estado2022?.candidatos.find(c => c.nome.includes('BOLSONARO'))?.percentual}
+          cand1={cands2026[0]}
+          cand2={cands2026[1]}
         />
 
         {/* Demais Candidatos em Lista Tabular Limpa */}

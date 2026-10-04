@@ -1,38 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { ElectionState, TSEApiResponse, CandidateResult } from '@/lib/types';
+import { cleanPartyName, getCandidateColor } from '@/lib/candidateUtils';
 
 // Código oficial do pleito presidencial 2026 configurável
 const DEFAULT_ELECTION_CODE = process.env.NEXT_PUBLIC_TSE_ELECTION_CODE || '600';
 const DEFAULT_ELECTION_CYCLE = process.env.NEXT_PUBLIC_TSE_ELECTION_CYCLE || 'ele2026';
-
-// Paleta de cores institucionais editoriais para candidatos
-const PARTY_COLORS: Record<string, string> = {
-  'PT': '#C5221F',
-  'PL': '#1E3A8A',
-  'MDB': '#15803D',
-  'PDT': '#B45309',
-  'PSOL': '#DC2626',
-  'NOVO': '#EA580C',
-  'PSDB': '#2563EB',
-  'UNIAO': '#0284C7',
-  'REPUBLICANOS': '#0369A1',
-};
-
-function getCandidateColor(nome: string, partido: string, index: number): string {
-  const upperPart = partido.toUpperCase();
-  for (const [key, color] of Object.entries(PARTY_COLORS)) {
-    if (upperPart.includes(key)) return color;
-  }
-  if (index === 0) return '#C5221F';
-  if (index === 1) return '#1E3A8A';
-  return '#52525B';
-}
-
-function cleanPartyName(cc: string | undefined): string {
-  if (!cc) return '';
-  const firstPart = cc.split(/[-/]/)[0].trim();
-  return firstPart || cc;
-}
 
 function parseTSEFloat(value: string | undefined): number {
   if (!value) return 0;
@@ -45,11 +17,11 @@ function parseTSEInt(value: string | undefined): number {
 }
 
 /**
- * Gera um estado de simulação realista para testes antes da abertura das urnas às 17h
+ * Gera um estado de simulação realista para testes antes da abertura das urnas às 17h,
+ * permitindo também simular qualquer candidato ou ultrapassagem via parâmetros de URL.
  */
-function generateDemoState2026(): ElectionState {
+function generateDemoState2026(searchParams?: URLSearchParams): ElectionState {
   const now = new Date();
-  // Para simulação realista de 64.8% de urnas, o horário de apuração no Brasil é por volta das 18:48
   const timeStr = '18:48:00';
 
   // Simulação de apuração realista em 64.80%
@@ -58,52 +30,71 @@ function generateDemoState2026(): ElectionState {
   const secoesApuradas = Math.round((pct / 100) * totalSecoes);
   const totalVotosValidos = 78540200;
 
-  const candLulaVotes = Math.round(totalVotosValidos * 0.4785);
-  const candOposicaoVotes = Math.round(totalVotosValidos * 0.4410);
-  const cand3Votes = Math.round(totalVotosValidos * 0.0480);
-  const cand4Votes = Math.round(totalVotosValidos * 0.0225);
-  const candOutrosVotes = totalVotosValidos - (candLulaVotes + candOposicaoVotes + cand3Votes + cand4Votes);
+  // Candidatos configuráveis via URL para testes dinâmicos (ex: Renan Santos, Samara, etc.)
+  const cand1Nome = searchParams?.get('cand1') || 'LULA';
+  const cand1Partido = searchParams?.get('partido1') || 'PT';
+  const cand1Pct = searchParams?.get('pct1') ? parseFloat(searchParams.get('pct1')!) : 47.85;
 
-  const candidatos: CandidateResult[] = [
+  const cand2Nome = searchParams?.get('cand2') || 'FLÁVIO BOLSONARO';
+  const cand2Partido = searchParams?.get('partido2') || 'PL';
+  const cand2Pct = searchParams?.get('pct2') ? parseFloat(searchParams.get('pct2')!) : 44.10;
+
+  const cand3Nome = searchParams?.get('cand3') || 'RONALDO CAIADO';
+  const cand3Partido = searchParams?.get('partido3') || 'UNIÃO';
+  const cand3Pct = searchParams?.get('pct3') ? parseFloat(searchParams.get('pct3')!) : 4.80;
+
+  const cand4Nome = searchParams?.get('cand4') || 'ROMEU ZEMA';
+  const cand4Partido = searchParams?.get('partido4') || 'NOVO';
+  const cand4Pct = searchParams?.get('pct4') ? parseFloat(searchParams.get('pct4')!) : 2.25;
+
+  const candOutrosPct = Math.max(0, Number((100 - (cand1Pct + cand2Pct + cand3Pct + cand4Pct)).toFixed(2)));
+
+  const cand1Votes = Math.round(totalVotosValidos * (cand1Pct / 100));
+  const cand2Votes = Math.round(totalVotosValidos * (cand2Pct / 100));
+  const cand3Votes = Math.round(totalVotosValidos * (cand3Pct / 100));
+  const cand4Votes = Math.round(totalVotosValidos * (cand4Pct / 100));
+  const candOutrosVotes = totalVotosValidos - (cand1Votes + cand2Votes + cand3Votes + cand4Votes);
+
+  const rawCandidatos: CandidateResult[] = [
     {
       id: 'cand-1',
-      nome: 'LULA',
+      nome: cand1Nome,
       numero: '13',
-      partido: 'PT',
-      votos: candLulaVotes,
-      percentual: 47.85,
+      partido: cand1Partido,
+      votos: cand1Votes,
+      percentual: cand1Pct,
       posicao: 1,
-      cor: '#C5221F'
+      cor: ''
     },
     {
       id: 'cand-2',
-      nome: 'FLÁVIO BOLSONARO',
+      nome: cand2Nome,
       numero: '22',
-      partido: 'PL',
-      votos: candOposicaoVotes,
-      percentual: 44.10,
+      partido: cand2Partido,
+      votos: cand2Votes,
+      percentual: cand2Pct,
       posicao: 2,
-      cor: '#1E3A8A'
+      cor: ''
     },
     {
       id: 'cand-3',
-      nome: 'RONALDO CAIADO',
+      nome: cand3Nome,
       numero: '44',
-      partido: 'UNIÃO',
+      partido: cand3Partido,
       votos: cand3Votes,
-      percentual: 4.80,
+      percentual: cand3Pct,
       posicao: 3,
-      cor: '#0284C7'
+      cor: ''
     },
     {
       id: 'cand-4',
-      nome: 'ROMEU ZEMA',
+      nome: cand4Nome,
       numero: '30',
-      partido: 'NOVO',
+      partido: cand4Partido,
       votos: cand4Votes,
-      percentual: 2.25,
+      percentual: cand4Pct,
       posicao: 4,
-      cor: '#EA580C'
+      cor: ''
     },
     {
       id: 'cand-5',
@@ -111,15 +102,20 @@ function generateDemoState2026(): ElectionState {
       numero: '--',
       partido: 'DIVERSOS',
       votos: candOutrosVotes,
-      percentual: 1.00,
+      percentual: candOutrosPct,
       posicao: 5,
       cor: '#52525B'
     }
   ];
 
+  // Atribuir cores dinâmicas
+  rawCandidatos.forEach(c => {
+    if (!c.cor) c.cor = getCandidateColor(c);
+  });
+
   // Garantir ordenação estritamente dinâmica por votos/percentual
-  candidatos.sort((a, b) => b.percentual - a.percentual);
-  candidatos.forEach((c, idx) => {
+  rawCandidatos.sort((a, b) => b.percentual - a.percentual);
+  rawCandidatos.forEach((c, idx) => {
     c.posicao = idx + 1;
   });
 
@@ -131,7 +127,7 @@ function generateDemoState2026(): ElectionState {
     totalSecoes,
     secoesApuradas,
     totalVotosValidos,
-    candidatos,
+    candidatos: rawCandidatos,
     status: 'em_andamento',
     origem: 'tse-demo',
     mensagemStatus: 'MODO DEMONSTRAÇÃO (simulando 64.8% para testes antes das 17h)'
@@ -146,7 +142,7 @@ export async function GET(request: NextRequest) {
 
   // Se o usuário solicitou demo explicitamente ou se a variável de ambiente força demo
   if (forceDemo || process.env.NEXT_PUBLIC_DEMO_MODE === 'true') {
-    return NextResponse.json(generateDemoState2026(), {
+    return NextResponse.json(generateDemoState2026(searchParams), {
       status: 200,
       headers: {
         'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
@@ -176,7 +172,7 @@ export async function GET(request: NextRequest) {
 
     if (!response.ok) {
       console.warn(`[TSE API] Resposta não-OK (${response.status}) para ${tseUrl}. Ativando fallback demo.`);
-      return NextResponse.json(generateDemoState2026(), {
+      return NextResponse.json(generateDemoState2026(searchParams), {
         status: 200,
         headers: {
           'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=30',
@@ -196,7 +192,7 @@ export async function GET(request: NextRequest) {
       const votos = parseTSEInt(c.vap);
       const percentual = parseTSEFloat(c.pvap);
       const partido = cleanPartyName(c.cc);
-      return {
+      const candObj: CandidateResult = {
         id: `cand-${c.n}`,
         nome: c.nm || 'CANDIDATO',
         numero: c.n,
@@ -204,8 +200,10 @@ export async function GET(request: NextRequest) {
         votos,
         percentual,
         posicao: parseInt(c.seq, 10) || (idx + 1),
-        cor: getCandidateColor(c.nm, partido, idx)
+        cor: ''
       };
+      candObj.cor = getCandidateColor(candObj);
+      return candObj;
     });
 
     // Ordenar por percentual estritamente decrescente e atualizar posições dinamicamente

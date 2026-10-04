@@ -2,6 +2,7 @@
 
 import React from 'react';
 import type { CandidateResult, ElectionState, ComparisonMode } from '@/lib/types';
+import { formatCandidateName, getCandidateColor, getHistoricalReference } from '@/lib/candidateUtils';
 
 interface ComparisonArenaProps {
   estado2026: ElectionState | null;
@@ -13,97 +14,6 @@ interface ComparisonArenaProps {
   deltaOposicao: number;
   margem2026: number;
   margem2022: number;
-}
-
-function formatCandidateName(name: string): string {
-  if (!name) return '';
-  const upper = name.toUpperCase();
-  if (upper.includes('FLÁVIO') || upper.includes('FLAVIO')) return 'Flávio Bolsonaro';
-  if (upper === 'LULA' || upper.includes('LUIZ INÁCIO')) return 'Lula';
-  if (upper.includes('JAIR')) return 'Jair Bolsonaro';
-  if (upper.includes('TEBET')) return 'Simone Tebet';
-  if (upper.includes('CIRO')) return 'Ciro Gomes';
-  if (upper.includes('CAIADO')) return 'Ronaldo Caiado';
-  if (upper.includes('ZEMA')) return 'Romeu Zema';
-  if (upper.includes('OUTROS') || upper.includes('DEMAIS')) return 'Outros candidatos';
-  
-  return name
-    .toLowerCase()
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-}
-
-function getCandidateColor(cand: CandidateResult | undefined): string {
-  if (!cand) return 'var(--fg)';
-  const party = cand.partido.toUpperCase();
-  const name = cand.nome.toUpperCase();
-  if (party === 'PT' || name.includes('LULA')) return 'var(--color-pt)';
-  if (party === 'PL' || name.includes('BOLSONARO')) return 'var(--color-pl)';
-  if (party.includes('UNIÃO') || party.includes('UNIAO') || name.includes('CAIADO')) return '#0284C7';
-  if (party.includes('NOVO') || name.includes('ZEMA')) return '#EA580C';
-  if (cand.cor) return cand.cor;
-  return 'var(--fg)';
-}
-
-/**
- * Encontra a referência histórica em 2022 de forma 100% dinâmica.
- * Se Flávio Bolsonaro passar Lula ou vice-versa, cada um mantém sua referência correta!
- */
-function getHistoricalReference(
-  cand2026: CandidateResult | undefined,
-  cands2022: CandidateResult[]
-): { label: string; percentual: number; delta: number } | null {
-  if (!cand2026 || !cands2022 || cands2022.length === 0) return null;
-
-  const nomeUpper = cand2026.nome.toUpperCase();
-  const partyUpper = cand2026.partido.toUpperCase();
-
-  // Lula 2026 -> Lula 2022
-  if (nomeUpper.includes('LULA')) {
-    const ref = cands2022.find(c => c.nome.toUpperCase().includes('LULA'));
-    if (ref) {
-      return {
-        label: 'vs Lula 2022',
-        percentual: ref.percentual,
-        delta: Number((cand2026.percentual - ref.percentual).toFixed(2))
-      };
-    }
-  }
-
-  // Flávio Bolsonaro / PL -> Jair Bolsonaro 2022
-  if (nomeUpper.includes('BOLSONARO') || partyUpper === 'PL') {
-    const ref = cands2022.find(c => c.nome.toUpperCase().includes('BOLSONARO'));
-    if (ref) {
-      return {
-        label: 'vs Jair Bolsonaro 2022',
-        percentual: ref.percentual,
-        delta: Number((cand2026.percentual - ref.percentual).toFixed(2))
-      };
-    }
-  }
-
-  // Outros candidatos: tenta encontrar pelo mesmo partido em 2022
-  const byParty = cands2022.find(c => c.partido.toUpperCase() === partyUpper);
-  if (byParty) {
-    return {
-      label: `vs ${formatCandidateName(byParty.nome)} 2022`,
-      percentual: byParty.percentual,
-      delta: Number((cand2026.percentual - byParty.percentual).toFixed(2))
-    };
-  }
-
-  // Fallback: mesmo ranking de 2022
-  const byRank = cands2022[cand2026.posicao - 1];
-  if (byRank) {
-    return {
-      label: `vs ${formatCandidateName(byRank.nome)} 2022`,
-      percentual: byRank.percentual,
-      delta: Number((cand2026.percentual - byRank.percentual).toFixed(2))
-    };
-  }
-
-  return null;
 }
 
 export function ComparisonArena({

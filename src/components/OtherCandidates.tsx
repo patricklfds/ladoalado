@@ -2,25 +2,11 @@
 
 import React from 'react';
 import type { CandidateResult } from '@/lib/types';
+import { formatCandidateName } from '@/lib/candidateUtils';
 
 interface OtherCandidatesProps {
   candidatos2026: CandidateResult[];
   candidatos2022: CandidateResult[];
-}
-
-function formatCandidateName(name: string): string {
-  if (!name) return '';
-  const upper = name.toUpperCase();
-  if (upper.includes('CAIADO')) return 'Ronaldo Caiado';
-  if (upper.includes('ZEMA')) return 'Romeu Zema';
-  if (upper.includes('TEBET')) return 'Simone Tebet';
-  if (upper.includes('CIRO')) return 'Ciro Gomes';
-  if (upper.includes('DIVERSOS') || upper.includes('OUTROS')) return 'Outros candidatos';
-  return name
-    .toLowerCase()
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
 }
 
 export function OtherCandidates({
