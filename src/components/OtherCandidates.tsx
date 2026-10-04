@@ -57,28 +57,37 @@ export function OtherCandidates({
                 </span>
               </div>
 
-              {/* Votação 2026 vs 2022 */}
-              <div className="flex items-center justify-between sm:justify-end gap-6 text-[11px] tabular-nums pl-8 sm:pl-0">
-                <span className="text-[var(--fg-muted)]">
+              {/* Votação 2026 vs 2022 em Colunas Perfeitamente Alinhadas */}
+              <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-6 text-[11px] tabular-nums shrink-0 pl-8 sm:pl-0">
+                {/* Votos 2026 */}
+                <span className="w-24 sm:w-28 text-right text-[var(--fg-muted)] shrink-0">
                   {cand.votos.toLocaleString('pt-BR')} votos
                 </span>
-                <span className="font-bold text-[var(--fg)] text-sm">
+
+                {/* Percentual 2026 */}
+                <span className="w-14 sm:w-16 text-right font-bold text-[var(--fg)] text-sm shrink-0">
                   {cand.percentual.toFixed(2)}%
                 </span>
-                {ref2022 && (
-                  <span className="text-[var(--fg-subtle)] hidden md:inline">
-                    2022: {ref2022.percentual.toFixed(2)}% ({formatCandidateName(ref2022.nome)})
-                  </span>
-                )}
-                {ref2022 && (
-                  <span
-                    className={`w-14 text-right font-semibold ${
-                      delta >= 0 ? 'text-[var(--color-positive)]' : 'text-[var(--color-negative)]'
-                    }`}
-                  >
-                    {delta >= 0 ? `+${delta.toFixed(2)}%` : `${delta.toFixed(2)}%`}
-                  </span>
-                )}
+
+                {/* Referência Histórica 2022 */}
+                <span className="hidden md:inline-block w-64 text-right text-[var(--fg-subtle)] shrink-0 truncate">
+                  {ref2022 ? (
+                    `2022: ${ref2022.percentual.toFixed(2)}% (${formatCandidateName(ref2022.nome)})`
+                  ) : (
+                    <span className="text-[var(--border)]">—</span>
+                  )}
+                </span>
+
+                {/* Delta 2026 vs 2022 */}
+                <span className="hidden md:inline-block w-16 text-right font-semibold shrink-0">
+                  {ref2022 ? (
+                    <span className={delta >= 0 ? 'text-[var(--color-positive)]' : 'text-[var(--color-negative)]'}>
+                      {delta >= 0 ? `+${delta.toFixed(2)}%` : `${delta.toFixed(2)}%`}
+                    </span>
+                  ) : (
+                    <span className="text-[var(--border)] font-normal">—</span>
+                  )}
+                </span>
               </div>
             </div>
           );

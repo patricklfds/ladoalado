@@ -243,7 +243,7 @@ export async function GET(request: NextRequest) {
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'LadoALado-Eleicoes/1.0 (Jornalismo de Dados)'
           },
-          next: { revalidate: 15 } // SWR 15s na borda
+          next: { revalidate: 5 } // SWR 5s na borda para apuração ultrarrápida
         });
         clearTimeout(timeoutId);
 
@@ -366,7 +366,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(electionState, {
       status: 200,
       headers: {
-        'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
+        'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=15',
         'X-Data-Source': 'tse-live'
       }
     });

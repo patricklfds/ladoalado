@@ -13,7 +13,7 @@ import {
   calculatePaceDifferenceMinutes
 } from '@/lib/comparator';
 
-const POLLING_INTERVAL_SECONDS = 60;
+const POLLING_INTERVAL_SECONDS = 20;
 
 export function useElectionData() {
   const [modo, setModo] = useState<ComparisonMode>('urnas');
@@ -62,14 +62,16 @@ export function useElectionData() {
     const minDelayPromise = new Promise(resolve => setTimeout(resolve, 400));
 
     try {
-      // Verificar se a URL possui flag ?demo=true
+      // Passar timestamp para garantir que cliques no botão de refresh bypassam qualquer cache
       const isDemoUrl = typeof window !== 'undefined' && window.location.search.includes('demo=true');
-      const url = isDemoUrl ? '/api/tse?demo=true' : '/api/tse';
+      const baseApiUrl = isDemoUrl ? '/api/tse?demo=true' : '/api/tse';
+      const sep = baseApiUrl.includes('?') ? '&' : '?';
+      const url = `${baseApiUrl}${sep}_t=${Date.now()}`;
 
       const [res] = await Promise.all([
         fetch(url, {
           signal: controller.signal,
-          headers: { 'Cache-Control': 'no-cache' }
+          headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
         }),
         minDelayPromise
       ]);
@@ -198,6 +200,9 @@ export function useElectionData() {
     erro,
     timeline2022,
     pontosSessao2026,
-    recarregarAgora: () => fetch2026Data()
+    recarregarAgora: () => {
+      setTempoRestante(POLLING_INTERVAL_SECONDS);
+      return fetch2026Data();
+    }
   };
 }
