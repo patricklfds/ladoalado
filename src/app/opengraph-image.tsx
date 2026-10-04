@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og';
 
-export const alt = 'Lado a Lado — Apuração Presidencial Comparada';
+export const alt = 'Lado a Lado | Apuração Presidencial Comparada';
 export const size = {
   width: 1200,
   height: 630,

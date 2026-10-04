@@ -30,7 +30,7 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://ladoalado.app";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: "Lado a Lado — Apuração Presidencial Comparada (2026 vs 2022)",
+  title: "Lado a Lado | Apuração Presidencial Comparada (2026 vs 2022)",
   description: "Acompanhe e compare em tempo real a apuração dos votos da eleição presidencial de 2026 com o histórico de 2022 sincronizado a cada 60 segundos.",
   keywords: ["eleições 2026", "apuração de votos", "tse", "lado a lado", "comparação 2022 e 2026", "tempo real", "jornalismo de dados"],
   authors: [{ name: "Lado a Lado" }],
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     canonical: "/",
   },
   openGraph: {
-    title: "Lado a Lado — Apuração Presidencial 2026 vs 2022",
+    title: "Lado a Lado | Apuração Presidencial 2026 vs 2022",
     description: "Comparador em tempo real da apuração eleitoral de 2026 com o histórico de 2022 sincronizado a cada 60 segundos com dados oficiais do TSE.",
     url: "/",
     siteName: "Lado a Lado",
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Lado a Lado — Apuração Presidencial 2026 vs 2022",
+    title: "Lado a Lado | Apuração Presidencial 2026 vs 2022",
     description: "Comparador em tempo real da apuração eleitoral de 2026 com o histórico de 2022 sincronizado a cada 60 segundos.",
   },
   robots: {

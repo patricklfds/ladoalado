@@ -13,7 +13,7 @@ export function Footer({ timestampISO, origem }: FooterProps) {
       <div className="flex flex-col sm:flex-row items-baseline justify-between gap-4">
         <div className="space-y-1">
           <p className="text-[var(--fg-muted)]">
-            <strong>Lado a Lado</strong> — 2026 vs 2022.
+            <strong>Lado a Lado</strong> | 2026 vs 2022.
           </p>
           <p>
             Fonte oficial: Tribunal Superior Eleitoral (TSE) · Atualização a cada 60 segundos.

@@ -1,4 +1,4 @@
-# Lado a Lado — Apuração Presidencial Comparada (2022 vs 2026)
+# Lado a Lado | Apuração Presidencial Comparada (2022 vs 2026)
 
 Aplicação web de jornalismo de dados de alta precisão para comparação em tempo real da apuração de votos das eleições presidenciais do Brasil de 2026 com o histórico de 2022, sincronizada a cada **60 segundos**.
 
