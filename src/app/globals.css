@@ -32,8 +32,8 @@
     
     --color-pt: #E03E3E;
     --color-pl: #3B82F6;
-    --color-positive: #22C55E;
-    --color-negative: #EF4444;
+    --color-positive: #10B981;
+    --color-negative: #F43F5E;
   }
 }
 
@@ -48,7 +48,6 @@
   --color-surface-hover: var(--surface-hover);
   --color-accent: var(--accent);
   --font-sans: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-serif: var(--font-serif), Georgia, Cambria, "Times New Roman", serif;
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 

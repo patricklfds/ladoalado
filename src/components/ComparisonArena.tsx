@@ -15,6 +15,23 @@ interface ComparisonArenaProps {
   margem2022: number;
 }
 
+function formatCandidateName(name: string): string {
+  if (!name) return '';
+  const upper = name.toUpperCase();
+  if (upper.includes('FLÁVIO') || upper.includes('FLAVIO')) return 'Flávio Bolsonaro';
+  if (upper === 'LULA' || upper.includes('LUIZ INÁCIO')) return 'Lula';
+  if (upper.includes('JAIR')) return 'Jair Bolsonaro';
+  if (upper.includes('TEBET')) return 'Simone Tebet';
+  if (upper.includes('CIRO')) return 'Ciro Gomes';
+  
+  // Title Case padrão para outros nomes
+  return name
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
 export function ComparisonArena({
   estado2026,
   estado2022,
@@ -54,10 +71,10 @@ export function ComparisonArena({
 
         {margem2026 > 0 && (
           <div className="font-mono text-[11px] text-[var(--fg)]">
-            Vantagem do líder: <strong className="font-bold">+{margem2026.toFixed(2)}%</strong>
+            Vantagem do líder: <strong className="font-semibold">+{margem2026.toFixed(2)}%</strong>
             {margem2022 > 0 && (
               <span className="text-[var(--fg-muted)] ml-1.5">
-                (em 2022: +{margem2022.toFixed(2)}% para {lider2022?.nome})
+                (em 2022: +{margem2022.toFixed(2)}% para {formatCandidateName(lider2022?.nome || '')})
               </span>
             )}
           </div>
@@ -70,7 +87,7 @@ export function ComparisonArena({
         <div>
           <div className="flex items-baseline justify-between pb-3 mb-6 border-b border-[var(--border)]">
             <div className="flex items-baseline gap-2">
-              <h2 className="font-serif text-2xl font-bold tracking-tight text-[var(--fg)]">
+              <h2 className="font-semibold text-xl tracking-tight text-[var(--fg)]">
                 2026
               </h2>
               <span className="text-xs font-mono text-[var(--fg-muted)]">
@@ -82,7 +99,7 @@ export function ComparisonArena({
             </span>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-7">
             {/* 1º Lugar 2026 */}
             {lider2026 && (
               <div className="group">
@@ -93,8 +110,8 @@ export function ComparisonArena({
                       <span>·</span>
                       <span>{lider2026.partido}</span>
                     </div>
-                    <h3 className="text-xl sm:text-2xl font-semibold tracking-tight text-[var(--fg)] uppercase">
-                      {lider2026.nome}
+                    <h3 className="text-xl sm:text-2xl font-semibold tracking-tight text-[var(--fg)]">
+                      {formatCandidateName(lider2026.nome)}
                     </h3>
                   </div>
 
@@ -114,10 +131,10 @@ export function ComparisonArena({
                   )}
                 </div>
 
-                {/* Linha fina proporcional */}
-                <div className="mt-3 w-full h-[1.5px] bg-[var(--border-subtle)]">
+                {/* Linha fina proporcional com track sutil visível */}
+                <div className="mt-3 w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-[var(--color-pt)]"
+                    className="h-full bg-[var(--color-pt)] rounded-full transition-all duration-500 ease-out"
                     style={{ width: `${Math.min(100, Math.max(0, lider2026.percentual))}%` }}
                   />
                 </div>
@@ -126,7 +143,7 @@ export function ComparisonArena({
 
             {/* 2º Lugar 2026 */}
             {segundo2026 && (
-              <div className="group pt-2">
+              <div className="group pt-1">
                 <div className="flex items-baseline justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-2 text-xs font-mono text-[var(--fg-subtle)] mb-1">
@@ -134,8 +151,8 @@ export function ComparisonArena({
                       <span>·</span>
                       <span>{segundo2026.partido}</span>
                     </div>
-                    <h3 className="text-xl sm:text-2xl font-semibold tracking-tight text-[var(--fg)] uppercase">
-                      {segundo2026.nome}
+                    <h3 className="text-xl sm:text-2xl font-semibold tracking-tight text-[var(--fg)]">
+                      {formatCandidateName(segundo2026.nome)}
                     </h3>
                   </div>
 
@@ -150,15 +167,15 @@ export function ComparisonArena({
                   <span>{segundo2026.votos.toLocaleString('pt-BR')} votos</span>
                   {bolso2022 && (
                     <span className={deltaOposicao >= 0 ? 'text-[var(--color-positive)] font-medium' : 'text-[var(--color-negative)] font-medium'}>
-                      {deltaOposicao >= 0 ? `+${deltaOposicao.toFixed(2)}%` : `${deltaOposicao.toFixed(2)}%`} vs Bolsonaro 2022 ({bolso2022.percentual.toFixed(2)}%)
+                      {deltaOposicao >= 0 ? `+${deltaOposicao.toFixed(2)}%` : `${deltaOposicao.toFixed(2)}%`} vs Jair Bolsonaro 2022 ({bolso2022.percentual.toFixed(2)}%)
                     </span>
                   )}
                 </div>
 
-                {/* Linha fina proporcional */}
-                <div className="mt-3 w-full h-[1.5px] bg-[var(--border-subtle)]">
+                {/* Linha fina proporcional com track sutil visível */}
+                <div className="mt-3 w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-[var(--color-pl)]"
+                    className="h-full bg-[var(--color-pl)] rounded-full transition-all duration-500 ease-out"
                     style={{ width: `${Math.min(100, Math.max(0, segundo2026.percentual))}%` }}
                   />
                 </div>
@@ -171,7 +188,7 @@ export function ComparisonArena({
         <div className="md:border-l md:border-[var(--border)] md:pl-12">
           <div className="flex items-baseline justify-between pb-3 mb-6 border-b border-[var(--border)]">
             <div className="flex items-baseline gap-2">
-              <h2 className="font-serif text-2xl font-bold tracking-tight text-[var(--fg-muted)]">
+              <h2 className="font-semibold text-xl tracking-tight text-[var(--fg-muted)]">
                 2022
               </h2>
               <span className="text-xs font-mono text-[var(--fg-subtle)]">
@@ -183,7 +200,7 @@ export function ComparisonArena({
             </span>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-7">
             {/* 1º Lugar 2022 */}
             {lider2022 && (
               <div className="group">
@@ -194,8 +211,8 @@ export function ComparisonArena({
                       <span>·</span>
                       <span>{lider2022.partido}</span>
                     </div>
-                    <h3 className="text-xl sm:text-2xl font-semibold tracking-tight text-[var(--fg-muted)] uppercase">
-                      {lider2022.nome}
+                    <h3 className="text-xl sm:text-2xl font-semibold tracking-tight text-[var(--fg-muted)]">
+                      {formatCandidateName(lider2022.nome)}
                     </h3>
                   </div>
 
@@ -211,10 +228,10 @@ export function ComparisonArena({
                   <span>Liderava neste ponto da apuração</span>
                 </div>
 
-                {/* Linha fina proporcional */}
-                <div className="mt-3 w-full h-[1.5px] bg-[var(--border-subtle)]">
+                {/* Linha fina proporcional com track sutil visível */}
+                <div className="mt-3 w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-neutral-400 dark:bg-neutral-600"
+                    className="h-full bg-neutral-400 dark:bg-neutral-600 rounded-full transition-all duration-500 ease-out"
                     style={{ width: `${Math.min(100, Math.max(0, lider2022.percentual))}%` }}
                   />
                 </div>
@@ -223,7 +240,7 @@ export function ComparisonArena({
 
             {/* 2º Lugar 2022 */}
             {segundo2022 && (
-              <div className="group pt-2">
+              <div className="group pt-1">
                 <div className="flex items-baseline justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-2 text-xs font-mono text-[var(--fg-subtle)] mb-1">
@@ -231,8 +248,8 @@ export function ComparisonArena({
                       <span>·</span>
                       <span>{segundo2022.partido}</span>
                     </div>
-                    <h3 className="text-xl sm:text-2xl font-semibold tracking-tight text-[var(--fg-muted)] uppercase">
-                      {segundo2022.nome}
+                    <h3 className="text-xl sm:text-2xl font-semibold tracking-tight text-[var(--fg-muted)]">
+                      {formatCandidateName(segundo2022.nome)}
                     </h3>
                   </div>
 
@@ -248,10 +265,10 @@ export function ComparisonArena({
                   <span>Segundo colocado</span>
                 </div>
 
-                {/* Linha fina proporcional */}
-                <div className="mt-3 w-full h-[1.5px] bg-[var(--border-subtle)]">
+                {/* Linha fina proporcional com track sutil visível */}
+                <div className="mt-3 w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-neutral-400 dark:bg-neutral-600"
+                    className="h-full bg-neutral-400 dark:bg-neutral-600 rounded-full transition-all duration-500 ease-out"
                     style={{ width: `${Math.min(100, Math.max(0, segundo2022.percentual))}%` }}
                   />
                 </div>

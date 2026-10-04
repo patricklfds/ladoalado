@@ -28,6 +28,12 @@ function getCandidateColor(nome: string, partido: string, index: number): string
   return '#52525B';
 }
 
+function cleanPartyName(cc: string | undefined): string {
+  if (!cc) return '';
+  const firstPart = cc.split(/[-/]/)[0].trim();
+  return firstPart || cc;
+}
+
 function parseTSEFloat(value: string | undefined): number {
   if (!value) return 0;
   return Number(value.replace('.', '').replace(',', '.'));
@@ -63,7 +69,7 @@ function generateDemoState2026(): ElectionState {
       id: 'cand-1',
       nome: 'LULA',
       numero: '13',
-      partido: 'PT - BRASIL DA ESPERANÇA',
+      partido: 'PT',
       votos: candLulaVotes,
       percentual: 47.85,
       posicao: 1,
@@ -71,7 +77,7 @@ function generateDemoState2026(): ElectionState {
     },
     {
       id: 'cand-2',
-      nome: 'CANDIDATO DA OPOSIÇÃO',
+      nome: 'FLÁVIO BOLSONARO',
       numero: '22',
       partido: 'PL',
       votos: candOposicaoVotes,
@@ -83,7 +89,7 @@ function generateDemoState2026(): ElectionState {
       id: 'cand-3',
       nome: 'TERCEIRA VIA',
       numero: '15',
-      partido: 'MDB / UNIÃO',
+      partido: 'MDB',
       votos: cand3Votes,
       percentual: 4.80,
       posicao: 3,
@@ -183,7 +189,7 @@ export async function GET(request: NextRequest) {
     const candidatos: CandidateResult[] = (tseData.cand || []).map((c, idx) => {
       const votos = parseTSEInt(c.vap);
       const percentual = parseTSEFloat(c.pvap);
-      const partido = c.cc || '';
+      const partido = cleanPartyName(c.cc);
       return {
         id: `cand-${c.n}`,
         nome: c.nm || 'CANDIDATO',

@@ -79,7 +79,7 @@ export function TrajectoryChart({
     <section className="py-8 sm:py-10 border-b border-[var(--border)]">
       <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 mb-4">
         <div>
-          <h3 className="font-serif text-lg font-bold tracking-tight text-[var(--fg)]">
+          <h3 className="font-semibold text-lg tracking-tight text-[var(--fg)]">
             Curva de Apuração
           </h3>
           <p className="text-xs text-[var(--fg-muted)]">
@@ -95,7 +95,7 @@ export function TrajectoryChart({
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-[2px] bg-[var(--color-pl)]" />
-            <span>Oposição</span>
+            <span>Flávio Bolsonaro</span>
           </div>
           <div className="flex items-center gap-1.5 text-[var(--fg-subtle)]">
             <span className="w-2.5 h-[1px] border-t border-dashed border-[var(--fg-subtle)]" />

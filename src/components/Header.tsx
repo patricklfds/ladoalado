@@ -52,7 +52,7 @@ export function Header({
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         {/* Marca & Identidade */}
         <div className="flex items-baseline gap-3">
-          <span className="font-serif text-xl sm:text-2xl font-bold tracking-tight text-[var(--fg)]">
+          <span className="font-semibold text-lg sm:text-xl tracking-tight text-[var(--fg)]">
             Lado a Lado
           </span>
           <span className="text-xs font-mono text-[var(--fg-muted)] tracking-wider">

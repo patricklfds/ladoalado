@@ -8,6 +8,19 @@ interface OtherCandidatesProps {
   candidatos2022: CandidateResult[];
 }
 
+function formatCandidateName(name: string): string {
+  if (!name) return '';
+  const upper = name.toUpperCase();
+  if (upper.includes('TEBET')) return 'Simone Tebet';
+  if (upper.includes('CIRO')) return 'Ciro Gomes';
+  if (upper.includes('DIVERSOS') || upper.includes('OUTROS')) return 'Outros candidatos';
+  return name
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
 export function OtherCandidates({
   candidatos2026,
   candidatos2022
@@ -20,7 +33,7 @@ export function OtherCandidates({
   return (
     <section className="py-8 sm:py-10 border-b border-[var(--border)]">
       <div className="mb-4">
-        <h3 className="font-serif text-lg font-bold tracking-tight text-[var(--fg)]">
+        <h3 className="font-semibold text-lg tracking-tight text-[var(--fg)]">
           Demais Candidatos
         </h3>
         <p className="text-xs text-[var(--fg-muted)]">
@@ -43,8 +56,8 @@ export function OtherCandidates({
                 <span className="text-[var(--fg-subtle)] w-5">
                   0{cand.posicao}
                 </span>
-                <span className="font-semibold text-[var(--fg)] uppercase tracking-wide">
-                  {cand.nome}
+                <span className="font-medium text-[var(--fg)]">
+                  {formatCandidateName(cand.nome)}
                 </span>
                 <span className="text-[var(--fg-subtle)]">
                   ({cand.partido})
