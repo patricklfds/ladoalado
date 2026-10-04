@@ -87,17 +87,17 @@ function generateDemoState2026(): ElectionState {
     },
     {
       id: 'cand-3',
-      nome: 'TERCEIRA VIA',
-      numero: '15',
-      partido: 'MDB',
+      nome: 'RONALDO CAIADO',
+      numero: '44',
+      partido: 'UNIÃO',
       votos: cand3Votes,
       percentual: 4.80,
       posicao: 3,
-      cor: '#15803D'
+      cor: '#0284C7'
     },
     {
       id: 'cand-4',
-      nome: 'QUARTO COLOCADO',
+      nome: 'ROMEU ZEMA',
       numero: '30',
       partido: 'NOVO',
       votos: cand4Votes,
@@ -107,7 +107,7 @@ function generateDemoState2026(): ElectionState {
     },
     {
       id: 'cand-5',
-      nome: 'DEMAIS CANDIDATOS',
+      nome: 'OUTROS CANDIDATOS',
       numero: '--',
       partido: 'DIVERSOS',
       votos: candOutrosVotes,
@@ -116,6 +116,12 @@ function generateDemoState2026(): ElectionState {
       cor: '#52525B'
     }
   ];
+
+  // Garantir ordenação estritamente dinâmica por votos/percentual
+  candidatos.sort((a, b) => b.percentual - a.percentual);
+  candidatos.forEach((c, idx) => {
+    c.posicao = idx + 1;
+  });
 
   return {
     ano: 2026,
@@ -202,8 +208,11 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Ordenar por percentual
+    // Ordenar por percentual estritamente decrescente e atualizar posições dinamicamente
     candidatos.sort((a, b) => b.percentual - a.percentual);
+    candidatos.forEach((c, idx) => {
+      c.posicao = idx + 1;
+    });
 
     const electionState: ElectionState = {
       ano: 2026,

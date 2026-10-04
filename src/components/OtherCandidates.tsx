@@ -11,6 +11,8 @@ interface OtherCandidatesProps {
 function formatCandidateName(name: string): string {
   if (!name) return '';
   const upper = name.toUpperCase();
+  if (upper.includes('CAIADO')) return 'Ronaldo Caiado';
+  if (upper.includes('ZEMA')) return 'Romeu Zema';
   if (upper.includes('TEBET')) return 'Simone Tebet';
   if (upper.includes('CIRO')) return 'Ciro Gomes';
   if (upper.includes('DIVERSOS') || upper.includes('OUTROS')) return 'Outros candidatos';
@@ -25,8 +27,12 @@ export function OtherCandidates({
   candidatos2026,
   candidatos2022
 }: OtherCandidatesProps) {
-  const secundario2026 = candidatos2026.slice(2);
-  const secundario2022 = candidatos2022.slice(2);
+  // Ordenar dinamicamente e pegar a partir do 3º colocado
+  const ordenados2026 = [...candidatos2026].sort((a, b) => b.percentual - a.percentual);
+  const ordenados2022 = [...candidatos2022].sort((a, b) => b.percentual - a.percentual);
+
+  const secundario2026 = ordenados2026.slice(2);
+  const secundario2022 = ordenados2022.slice(2);
 
   if (secundario2026.length === 0) return null;
 
@@ -45,16 +51,17 @@ export function OtherCandidates({
         {secundario2026.map((cand, idx) => {
           const ref2022 = secundario2022[idx];
           const delta = ref2022 ? Number((cand.percentual - ref2022.percentual).toFixed(2)) : 0;
+          const pos = (idx + 3).toString().padStart(2, '0');
 
           return (
             <div
-              key={cand.id}
+              key={cand.id || cand.nome}
               className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-[var(--surface-hover)] px-1 rounded transition-colors"
             >
-              {/* Nome & Partido 2026 */}
+              {/* Posição dinâmica, Nome & Partido 2026 */}
               <div className="flex items-center gap-3">
                 <span className="text-[var(--fg-subtle)] w-5">
-                  0{cand.posicao}
+                  {pos}
                 </span>
                 <span className="font-medium text-[var(--fg)]">
                   {formatCandidateName(cand.nome)}
@@ -74,7 +81,7 @@ export function OtherCandidates({
                 </span>
                 {ref2022 && (
                   <span className="text-[var(--fg-subtle)] hidden md:inline">
-                    2022: {ref2022.percentual.toFixed(2)}% ({ref2022.nome.split(' ')[0]})
+                    2022: {ref2022.percentual.toFixed(2)}% ({formatCandidateName(ref2022.nome)})
                   </span>
                 )}
                 {ref2022 && (

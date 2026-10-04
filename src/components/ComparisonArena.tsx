@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import type { ElectionState, ComparisonMode } from '@/lib/types';
+import type { CandidateResult, ElectionState, ComparisonMode } from '@/lib/types';
 
 interface ComparisonArenaProps {
   estado2026: ElectionState | null;
@@ -23,8 +23,10 @@ function formatCandidateName(name: string): string {
   if (upper.includes('JAIR')) return 'Jair Bolsonaro';
   if (upper.includes('TEBET')) return 'Simone Tebet';
   if (upper.includes('CIRO')) return 'Ciro Gomes';
+  if (upper.includes('CAIADO')) return 'Ronaldo Caiado';
+  if (upper.includes('ZEMA')) return 'Romeu Zema';
+  if (upper.includes('OUTROS') || upper.includes('DEMAIS')) return 'Outros candidatos';
   
-  // Title Case padrão para outros nomes
   return name
     .toLowerCase()
     .split(' ')
@@ -32,29 +34,100 @@ function formatCandidateName(name: string): string {
     .join(' ');
 }
 
+function getCandidateColor(cand: CandidateResult | undefined): string {
+  if (!cand) return 'var(--fg)';
+  const party = cand.partido.toUpperCase();
+  const name = cand.nome.toUpperCase();
+  if (party === 'PT' || name.includes('LULA')) return 'var(--color-pt)';
+  if (party === 'PL' || name.includes('BOLSONARO')) return 'var(--color-pl)';
+  if (party.includes('UNIÃO') || party.includes('UNIAO') || name.includes('CAIADO')) return '#0284C7';
+  if (party.includes('NOVO') || name.includes('ZEMA')) return '#EA580C';
+  if (cand.cor) return cand.cor;
+  return 'var(--fg)';
+}
+
+/**
+ * Encontra a referência histórica em 2022 de forma 100% dinâmica.
+ * Se Flávio Bolsonaro passar Lula ou vice-versa, cada um mantém sua referência correta!
+ */
+function getHistoricalReference(
+  cand2026: CandidateResult | undefined,
+  cands2022: CandidateResult[]
+): { label: string; percentual: number; delta: number } | null {
+  if (!cand2026 || !cands2022 || cands2022.length === 0) return null;
+
+  const nomeUpper = cand2026.nome.toUpperCase();
+  const partyUpper = cand2026.partido.toUpperCase();
+
+  // Lula 2026 -> Lula 2022
+  if (nomeUpper.includes('LULA')) {
+    const ref = cands2022.find(c => c.nome.toUpperCase().includes('LULA'));
+    if (ref) {
+      return {
+        label: 'vs Lula 2022',
+        percentual: ref.percentual,
+        delta: Number((cand2026.percentual - ref.percentual).toFixed(2))
+      };
+    }
+  }
+
+  // Flávio Bolsonaro / PL -> Jair Bolsonaro 2022
+  if (nomeUpper.includes('BOLSONARO') || partyUpper === 'PL') {
+    const ref = cands2022.find(c => c.nome.toUpperCase().includes('BOLSONARO'));
+    if (ref) {
+      return {
+        label: 'vs Jair Bolsonaro 2022',
+        percentual: ref.percentual,
+        delta: Number((cand2026.percentual - ref.percentual).toFixed(2))
+      };
+    }
+  }
+
+  // Outros candidatos: tenta encontrar pelo mesmo partido em 2022
+  const byParty = cands2022.find(c => c.partido.toUpperCase() === partyUpper);
+  if (byParty) {
+    return {
+      label: `vs ${formatCandidateName(byParty.nome)} 2022`,
+      percentual: byParty.percentual,
+      delta: Number((cand2026.percentual - byParty.percentual).toFixed(2))
+    };
+  }
+
+  // Fallback: mesmo ranking de 2022
+  const byRank = cands2022[cand2026.posicao - 1];
+  if (byRank) {
+    return {
+      label: `vs ${formatCandidateName(byRank.nome)} 2022`,
+      percentual: byRank.percentual,
+      delta: Number((cand2026.percentual - byRank.percentual).toFixed(2))
+    };
+  }
+
+  return null;
+}
+
 export function ComparisonArena({
   estado2026,
   estado2022,
   modo,
-  deltaLula,
-  deltaOposicao,
   margem2026,
   margem2022
 }: ComparisonArenaProps) {
-  const cands2026 = estado2026?.candidatos || [];
-  const cands2022 = estado2022?.candidatos || [];
-
-  const lula2022 = cands2022.find(c => c.nome.includes('LULA'));
-  const bolso2022 = cands2022.find(c => c.nome.includes('BOLSONARO'));
+  // Ordenação garantidamente dinâmica
+  const cands2026 = [...(estado2026?.candidatos || [])].sort((a, b) => b.percentual - a.percentual);
+  const cands2022 = [...(estado2022?.candidatos || [])].sort((a, b) => b.percentual - a.percentual);
 
   const lider2026 = cands2026[0];
   const segundo2026 = cands2026[1];
   const lider2022 = cands2022[0];
   const segundo2022 = cands2022[1];
 
+  const refLider2026 = getHistoricalReference(lider2026, cands2022);
+  const refSegundo2026 = getHistoricalReference(segundo2026, cands2022);
+
   return (
     <section className="py-8 sm:py-10 border-b border-[var(--border)]">
-      {/* Resumo da Margem de Liderança */}
+      {/* Resumo da Margem de Liderança (100% Dinâmico) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-6 text-xs text-[var(--fg-muted)]">
         <div className="font-mono">
           <span className="text-[var(--fg-subtle)] mr-2">comparação direta:</span>
@@ -69,12 +142,12 @@ export function ComparisonArena({
           )}
         </div>
 
-        {margem2026 > 0 && (
+        {margem2026 > 0 && lider2026 && (
           <div className="font-mono text-[11px] text-[var(--fg)]">
-            Vantagem do líder: <strong className="font-semibold">+{margem2026.toFixed(2)}%</strong>
-            {margem2022 > 0 && (
+            Vantagem de {formatCandidateName(lider2026.nome)}: <strong className="font-semibold">+{margem2026.toFixed(2)}%</strong>
+            {margem2022 > 0 && lider2022 && (
               <span className="text-[var(--fg-muted)] ml-1.5">
-                (em 2022: +{margem2022.toFixed(2)}% para {formatCandidateName(lider2022?.nome || '')})
+                (em 2022: +{margem2022.toFixed(2)}% para {formatCandidateName(lider2022.nome)})
               </span>
             )}
           </div>
@@ -100,7 +173,7 @@ export function ComparisonArena({
           </div>
 
           <div className="space-y-7">
-            {/* 1º Lugar 2026 */}
+            {/* 1º Lugar 2026 (Dinâmico) */}
             {lider2026 && (
               <div className="group">
                 <div className="flex items-baseline justify-between gap-4">
@@ -124,24 +197,27 @@ export function ComparisonArena({
 
                 <div className="mt-2 flex items-center justify-between text-xs font-mono text-[var(--fg-muted)]">
                   <span>{lider2026.votos.toLocaleString('pt-BR')} votos</span>
-                  {lula2022 && (
-                    <span className={deltaLula >= 0 ? 'text-[var(--color-positive)] font-medium' : 'text-[var(--color-negative)] font-medium'}>
-                      {deltaLula >= 0 ? `+${deltaLula.toFixed(2)}%` : `${deltaLula.toFixed(2)}%`} vs Lula 2022 ({lula2022.percentual.toFixed(2)}%)
+                  {refLider2026 && (
+                    <span className={refLider2026.delta >= 0 ? 'text-[var(--color-positive)] font-medium' : 'text-[var(--color-negative)] font-medium'}>
+                      {refLider2026.delta >= 0 ? `+${refLider2026.delta.toFixed(2)}%` : `${refLider2026.delta.toFixed(2)}%`} {refLider2026.label} ({refLider2026.percentual.toFixed(2)}%)
                     </span>
                   )}
                 </div>
 
-                {/* Linha fina proporcional com track sutil visível */}
+                {/* Linha fina com track sutil visível e cor dinâmica do candidato */}
                 <div className="mt-3 w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-[var(--color-pt)] rounded-full transition-all duration-500 ease-out"
-                    style={{ width: `${Math.min(100, Math.max(0, lider2026.percentual))}%` }}
+                    className="h-full rounded-full transition-all duration-500 ease-out"
+                    style={{
+                      width: `${Math.min(100, Math.max(0, lider2026.percentual))}%`,
+                      backgroundColor: getCandidateColor(lider2026)
+                    }}
                   />
                 </div>
               </div>
             )}
 
-            {/* 2º Lugar 2026 */}
+            {/* 2º Lugar 2026 (Dinâmico) */}
             {segundo2026 && (
               <div className="group pt-1">
                 <div className="flex items-baseline justify-between gap-4">
@@ -165,18 +241,21 @@ export function ComparisonArena({
 
                 <div className="mt-2 flex items-center justify-between text-xs font-mono text-[var(--fg-muted)]">
                   <span>{segundo2026.votos.toLocaleString('pt-BR')} votos</span>
-                  {bolso2022 && (
-                    <span className={deltaOposicao >= 0 ? 'text-[var(--color-positive)] font-medium' : 'text-[var(--color-negative)] font-medium'}>
-                      {deltaOposicao >= 0 ? `+${deltaOposicao.toFixed(2)}%` : `${deltaOposicao.toFixed(2)}%`} vs Jair Bolsonaro 2022 ({bolso2022.percentual.toFixed(2)}%)
+                  {refSegundo2026 && (
+                    <span className={refSegundo2026.delta >= 0 ? 'text-[var(--color-positive)] font-medium' : 'text-[var(--color-negative)] font-medium'}>
+                      {refSegundo2026.delta >= 0 ? `+${refSegundo2026.delta.toFixed(2)}%` : `${refSegundo2026.delta.toFixed(2)}%`} {refSegundo2026.label} ({refSegundo2026.percentual.toFixed(2)}%)
                     </span>
                   )}
                 </div>
 
-                {/* Linha fina proporcional com track sutil visível */}
+                {/* Linha fina com track sutil visível e cor dinâmica do candidato */}
                 <div className="mt-3 w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-[var(--color-pl)] rounded-full transition-all duration-500 ease-out"
-                    style={{ width: `${Math.min(100, Math.max(0, segundo2026.percentual))}%` }}
+                    className="h-full rounded-full transition-all duration-500 ease-out"
+                    style={{
+                      width: `${Math.min(100, Math.max(0, segundo2026.percentual))}%`,
+                      backgroundColor: getCandidateColor(segundo2026)
+                    }}
                   />
                 </div>
               </div>
@@ -201,7 +280,7 @@ export function ComparisonArena({
           </div>
 
           <div className="space-y-7">
-            {/* 1º Lugar 2022 */}
+            {/* 1º Lugar 2022 (Dinâmico - reflete a virada histórica) */}
             {lider2022 && (
               <div className="group">
                 <div className="flex items-baseline justify-between gap-4">
@@ -228,17 +307,19 @@ export function ComparisonArena({
                   <span>Liderava neste ponto da apuração</span>
                 </div>
 
-                {/* Linha fina proporcional com track sutil visível */}
                 <div className="mt-3 w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-neutral-400 dark:bg-neutral-600 rounded-full transition-all duration-500 ease-out"
-                    style={{ width: `${Math.min(100, Math.max(0, lider2022.percentual))}%` }}
+                    className="h-full rounded-full transition-all duration-500 ease-out"
+                    style={{
+                      width: `${Math.min(100, Math.max(0, lider2022.percentual))}%`,
+                      backgroundColor: getCandidateColor(lider2022)
+                    }}
                   />
                 </div>
               </div>
             )}
 
-            {/* 2º Lugar 2022 */}
+            {/* 2º Lugar 2022 (Dinâmico) */}
             {segundo2022 && (
               <div className="group pt-1">
                 <div className="flex items-baseline justify-between gap-4">
@@ -265,11 +346,13 @@ export function ComparisonArena({
                   <span>Segundo colocado</span>
                 </div>
 
-                {/* Linha fina proporcional com track sutil visível */}
                 <div className="mt-3 w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-neutral-400 dark:bg-neutral-600 rounded-full transition-all duration-500 ease-out"
-                    style={{ width: `${Math.min(100, Math.max(0, segundo2022.percentual))}%` }}
+                    className="h-full rounded-full transition-all duration-500 ease-out"
+                    style={{
+                      width: `${Math.min(100, Math.max(0, segundo2022.percentual))}%`,
+                      backgroundColor: getCandidateColor(segundo2022)
+                    }}
                   />
                 </div>
               </div>

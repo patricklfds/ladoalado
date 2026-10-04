@@ -70,8 +70,8 @@ export default function HomePage() {
         <TrajectoryChart
           timeline2022={timeline2022}
           currentPct2026={estado2026?.secoesTotalizadasPct || 0}
-          cand1Pct2026={estado2026?.candidatos[0]?.percentual}
-          cand2Pct2026={estado2026?.candidatos[1]?.percentual}
+          cand1Pct2026={estado2026?.candidatos.find(c => c.nome.includes('LULA'))?.percentual || estado2026?.candidatos[0]?.percentual}
+          cand2Pct2026={estado2026?.candidatos.find(c => c.nome.includes('BOLSONARO'))?.percentual || estado2026?.candidatos[1]?.percentual}
           cand1Pct2022={estado2022?.candidatos.find(c => c.nome.includes('LULA'))?.percentual}
           cand2Pct2022={estado2022?.candidatos.find(c => c.nome.includes('BOLSONARO'))?.percentual}
         />

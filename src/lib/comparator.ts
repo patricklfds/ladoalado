@@ -65,8 +65,11 @@ export function point2022ToElectionState(point: TimelinePoint2022): ElectionStat
     });
   }
 
-  // Ordenar pela posição real
+  // Ordenar pela posição real e reindexar dinamicamente (para refletir a virada de 2022)
   candidatos.sort((a, b) => b.percentual - a.percentual);
+  candidatos.forEach((c, idx) => {
+    c.posicao = idx + 1;
+  });
 
   return {
     ano: 2022,

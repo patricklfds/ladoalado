@@ -105,9 +105,20 @@ export function Header({
               onClick={recarregarAgora}
               disabled={isAtualizando}
               title="Atualizar agora"
-              className="text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors disabled:opacity-40 ml-0.5"
+              className="text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors disabled:opacity-40 p-0.5 inline-flex items-center justify-center"
             >
-              <span className={`inline-block ${isAtualizando ? 'animate-spin' : ''}`}>↻</span>
+              <svg
+                className={`w-3 h-3 ${isAtualizando ? 'animate-spin' : ''}`}
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.75"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M1.5 8a6.5 6.5 0 1 0 1.9-4.6L1.5 5.5" />
+                <path d="M1.5 2v3.5h3.5" />
+              </svg>
             </button>
           </div>
 
