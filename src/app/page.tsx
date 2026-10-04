@@ -27,6 +27,7 @@ export default function HomePage() {
     isAtualizando,
     erro,
     timeline2022,
+    timeline2026,
     recarregarAgora
   } = useElectionData();
 
@@ -110,6 +111,7 @@ export default function HomePage() {
             {/* Gráfico de Trajetória SVG 100% Dinâmico */}
             <TrajectoryChart
               timeline2022={timeline2022}
+              timeline2026={timeline2026}
               currentPct2026={secoesPct}
               cand1={cands2026[0]}
               cand2={cands2026[1]}

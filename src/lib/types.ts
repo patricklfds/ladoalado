@@ -35,6 +35,12 @@ export interface CandidateResult {
 
 export type ElectionStatus = 'aguardando' | 'em_andamento' | 'finalizada' | 'erro';
 
+export interface TimelinePoint2026 {
+  urnasPct: number;
+  timestamp: string;
+  candidatos: Record<string, number>;
+}
+
 export interface ElectionState {
   ano: 2022 | 2026;
   timestamp: string;             // "HH:mm" ou "HH:mm:ss"
@@ -47,6 +53,7 @@ export interface ElectionState {
   status: ElectionStatus;
   origem: 'tse-live' | 'tse-demo' | 'historico-2022';
   mensagemStatus?: string;
+  timeline2026?: TimelinePoint2026[];
 }
 
 export type ComparisonMode = 'urnas' | 'horario';

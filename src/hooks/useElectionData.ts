@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type {
   ElectionState,
   TimelinePoint2022,
+  TimelinePoint2026,
   ComparisonMode
 } from '@/lib/types';
 import {
@@ -18,6 +19,22 @@ const POLLING_INTERVAL_SECONDS = 20;
 export function useElectionData() {
   const [modo, setModo] = useState<ComparisonMode>('urnas');
   const [timeline2022, setTimeline2022] = useState<TimelinePoint2022[]>([]);
+  const [timeline2026, setTimeline2026] = useState<TimelinePoint2026[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('ladoalado_timeline_2026');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed;
+          }
+        }
+      } catch {
+        // Ignorar erros de storage
+      }
+    }
+    return [];
+  });
   const [estado2026, setEstado2026] = useState<ElectionState | null>(null);
   const [tempoRestante, setTempoRestante] = useState<number>(POLLING_INTERVAL_SECONDS);
   const [isCarregando, setIsCarregando] = useState<boolean>(true);
@@ -101,7 +118,43 @@ export function useElectionData() {
         return [...prev, novoPonto];
       });
 
-      // Reiniciar o contador de 60s
+      // Sincronizar o histórico real da apuração de 2026
+      const serverTimeline = data.timeline2026 || [];
+      const currentPoint: TimelinePoint2026 = {
+        urnasPct: data.secoesTotalizadasPct,
+        timestamp: data.timestamp,
+        candidatos: Object.fromEntries(
+          data.candidatos.map(c => [c.nome.toUpperCase().trim(), c.percentual])
+        )
+      };
+
+      setTimeline2026(prev => {
+        const pointMap = new Map<number, TimelinePoint2026>();
+        [...prev, ...serverTimeline, currentPoint].forEach(pt => {
+          if (pt && pt.urnasPct > 0) {
+            const key = Math.round(pt.urnasPct * 100) / 100;
+            const existing = pointMap.get(key);
+            if (!existing) {
+              pointMap.set(key, pt);
+            } else {
+              pointMap.set(key, {
+                ...existing,
+                ...pt,
+                candidatos: { ...existing.candidatos, ...pt.candidatos }
+              });
+            }
+          }
+        });
+        const merged = Array.from(pointMap.values()).sort((a, b) => a.urnasPct - b.urnasPct);
+        try {
+          localStorage.setItem('ladoalado_timeline_2026', JSON.stringify(merged));
+        } catch {
+          // ignore
+        }
+        return merged;
+      });
+
+      // Reiniciar o contador de 20s
       setTempoRestante(POLLING_INTERVAL_SECONDS);
     } catch (err: unknown) {
       if ((err as Error)?.name !== 'AbortError') {
@@ -199,6 +252,7 @@ export function useElectionData() {
     isAtualizando,
     erro,
     timeline2022,
+    timeline2026,
     pontosSessao2026,
     recarregarAgora: () => {
       setTempoRestante(POLLING_INTERVAL_SECONDS);

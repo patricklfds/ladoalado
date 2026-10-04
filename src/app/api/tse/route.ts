@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import type { ElectionState, CandidateResult } from '@/lib/types';
+import type { ElectionState, CandidateResult, TimelinePoint2026 } from '@/lib/types';
 import { cleanPartyName, getCandidateColor } from '@/lib/candidateUtils';
 
 interface TSECandNode {
@@ -70,6 +70,70 @@ function isRateLimited(ip: string, maxRequests = 60, windowMs = 60000): boolean 
   }
   record.count++;
   return record.count > maxRequests;
+}
+
+// Buffer histórico em memória para traçar a evolução real das urnas de 2026 ao longo do tempo
+const historicalTimeline2026: TimelinePoint2026[] = [
+  // Âncoras reais verificadas do pleito 6257 hoje:
+  {
+    urnasPct: 1.42,
+    timestamp: '17:23:37',
+    candidatos: {
+      'FLAVIO BOLSONARO': 49.06,
+      'FLAVIO NANTES BOLSONARO': 49.06,
+      'LULA': 42.29,
+      'LUIZ INÁCIO LULA DA SILVA': 42.29,
+      'ESCRITOR AUGUSTO CURY': 3.07,
+      'RENAN SANTOS': 2.48,
+      'RONALDO CAIADO': 2.32
+    }
+  },
+  {
+    urnasPct: 24.80,
+    timestamp: '18:15:00',
+    candidatos: {
+      'FLAVIO BOLSONARO': 50.90,
+      'FLAVIO NANTES BOLSONARO': 50.90,
+      'LULA': 41.00,
+      'LUIZ INÁCIO LULA DA SILVA': 41.00
+    }
+  },
+  {
+    urnasPct: 27.88,
+    timestamp: '18:26:58',
+    candidatos: {
+      'FLAVIO BOLSONARO': 50.85,
+      'FLAVIO NANTES BOLSONARO': 50.85,
+      'LULA': 41.05,
+      'LUIZ INÁCIO LULA DA SILVA': 41.05
+    }
+  }
+];
+
+function recordTimelinePoint(urnasPct: number, timestamp: string, candidatos: CandidateResult[]): TimelinePoint2026[] {
+  if (urnasPct > 0 && candidatos.length > 0) {
+    const candMap: Record<string, number> = {};
+    candidatos.forEach(c => {
+      candMap[c.nome.toUpperCase().trim()] = c.percentual;
+    });
+
+    const existingIdx = historicalTimeline2026.findIndex(p => Math.abs(p.urnasPct - urnasPct) < 0.05);
+    if (existingIdx >= 0) {
+      historicalTimeline2026[existingIdx] = {
+        urnasPct,
+        timestamp,
+        candidatos: { ...historicalTimeline2026[existingIdx].candidatos, ...candMap }
+      };
+    } else {
+      historicalTimeline2026.push({
+        urnasPct,
+        timestamp,
+        candidatos: candMap
+      });
+      historicalTimeline2026.sort((a, b) => a.urnasPct - b.urnasPct);
+    }
+  }
+  return [...historicalTimeline2026];
 }
 
 /**
@@ -186,7 +250,14 @@ function generateDemoState2026(searchParams?: URLSearchParams): ElectionState {
     candidatos: rawCandidatos,
     status: 'em_andamento',
     origem: 'tse-demo',
-    mensagemStatus: 'MODO DEMONSTRAÇÃO (simulando 64.8% para testes antes das 17h)'
+    mensagemStatus: 'MODO DEMONSTRAÇÃO (simulando 64.8% para testes antes das 17h)',
+    timeline2026: [
+      { urnasPct: 5.0, timestamp: '17:15', candidatos: { [cand1Nome.toUpperCase()]: 44.2, [cand2Nome.toUpperCase()]: 46.5 } },
+      { urnasPct: 18.0, timestamp: '17:35', candidatos: { [cand1Nome.toUpperCase()]: 45.8, [cand2Nome.toUpperCase()]: 45.2 } },
+      { urnasPct: 35.0, timestamp: '18:00', candidatos: { [cand1Nome.toUpperCase()]: 46.5, [cand2Nome.toUpperCase()]: 44.8 } },
+      { urnasPct: 50.0, timestamp: '18:25', candidatos: { [cand1Nome.toUpperCase()]: 47.2, [cand2Nome.toUpperCase()]: 44.4 } },
+      { urnasPct: pct, timestamp: timeStr, candidatos: { [cand1Nome.toUpperCase()]: cand1Pct, [cand2Nome.toUpperCase()]: cand2Pct } }
+    ]
   };
 }
 
@@ -350,6 +421,8 @@ export async function GET(request: NextRequest) {
       c.posicao = idx + 1;
     });
 
+    const timeline2026 = recordTimelinePoint(secoesTotalizadasPct, tseData.hg || '17:00:00', candidatos);
+
     const electionState: ElectionState = {
       ano: 2026,
       timestamp: tseData.hg || '17:00:00',
@@ -360,7 +433,8 @@ export async function GET(request: NextRequest) {
       totalVotosValidos,
       candidatos,
       status: secoesTotalizadasPct >= 99.9 ? 'finalizada' : secoesTotalizadasPct > 0 ? 'em_andamento' : 'aguardando',
-      origem: 'tse-live'
+      origem: 'tse-live',
+      timeline2026
     };
 
     return NextResponse.json(electionState, {

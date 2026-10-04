@@ -1,18 +1,44 @@
 'use client';
 
 import React from 'react';
-import type { TimelinePoint2022, CandidateResult } from '@/lib/types';
+import type { TimelinePoint2022, CandidateResult, TimelinePoint2026 } from '@/lib/types';
 import { formatCandidateName, getCandidateColor } from '@/lib/candidateUtils';
 
 interface TrajectoryChartProps {
   timeline2022: TimelinePoint2022[];
+  timeline2026?: TimelinePoint2026[];
   currentPct2026: number;
   cand1?: CandidateResult;
   cand2?: CandidateResult;
 }
 
+function findCandidatePct(cand: CandidateResult | undefined, candsMap: Record<string, number>): number | null {
+  if (!cand || !candsMap) return null;
+  const candNome = cand.nome.toUpperCase().trim();
+
+  // 1. Busca exata ou por inclusão direta
+  for (const [key, val] of Object.entries(candsMap)) {
+    const k = key.toUpperCase().trim();
+    if (k === candNome || k.includes(candNome) || candNome.includes(k)) {
+      return val;
+    }
+  }
+
+  // 2. Busca por partes do nome (ex: LULA ou FLAVIO)
+  const candParts = candNome.split(' ').filter(p => p.length > 3);
+  for (const [key, val] of Object.entries(candsMap)) {
+    const kParts = key.toUpperCase().trim().split(' ');
+    if (candParts.some(p => kParts.includes(p))) {
+      return val;
+    }
+  }
+
+  return null;
+}
+
 export function TrajectoryChart({
   timeline2022,
+  timeline2026,
   currentPct2026,
   cand1,
   cand2
@@ -24,7 +50,7 @@ export function TrajectoryChart({
   const plotW = width - padding.left - padding.right;
   const plotH = height - padding.top - padding.bottom;
 
-  // Escalas: X vai de 0% a 100% de urnas; Y vai de 35% a 55%
+  // Candidatos atuais
   const cand1Pct = cand1?.percentual ?? 47.85;
   const cand2Pct = cand2?.percentual ?? 44.10;
 
@@ -34,9 +60,35 @@ export function TrajectoryChart({
   const cand1Cor = cand1 ? getCandidateColor(cand1) : 'var(--color-pt)';
   const cand2Cor = cand2 ? getCandidateColor(cand2) : 'var(--color-pl)';
 
-  // Definir mínimo e máximo de Y dinamicamente para acomodar qualquer candidato
-  const minVal = Math.min(cand1Pct, cand2Pct, 38);
-  const maxVal = Math.max(cand1Pct, cand2Pct, 52);
+  // Obter pontos históricos reais de 2026 até o percentual atual apurado
+  const validTimeline2026 = (timeline2026 || [])
+    .filter(p => p.urnasPct > 0 && p.urnasPct <= (currentPct2026 + 0.1))
+    .sort((a, b) => a.urnasPct - b.urnasPct);
+
+  // Garantir que o ponto atual exato esteja incluído
+  const hasCurrentPoint = validTimeline2026.some(p => Math.abs(p.urnasPct - currentPct2026) < 0.1);
+  const pointsToDraw = [...validTimeline2026];
+  if (!hasCurrentPoint && currentPct2026 > 0 && cand1 && cand2) {
+    pointsToDraw.push({
+      urnasPct: currentPct2026,
+      timestamp: '',
+      candidatos: {
+        [cand1.nome.toUpperCase().trim()]: cand1Pct,
+        [cand2.nome.toUpperCase().trim()]: cand2Pct
+      }
+    });
+    pointsToDraw.sort((a, b) => a.urnasPct - b.urnasPct);
+  }
+
+  // Definir mínimo e máximo de Y dinamicamente para acomodar qualquer candidato e histórico
+  const allRecordedValues: number[] = [
+    cand1Pct,
+    cand2Pct,
+    ...pointsToDraw.flatMap(p => Object.values(p.candidatos))
+  ].filter(v => typeof v === 'number' && !isNaN(v) && v > 0);
+
+  const minVal = Math.min(...allRecordedValues, 38);
+  const maxVal = Math.max(...allRecordedValues, 52);
   const yMin = Math.max(0, Math.floor(minVal - 2));
   const yMax = Math.min(100, Math.ceil(maxVal + 2));
 
@@ -59,27 +111,29 @@ export function TrajectoryChart({
     .map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${scaleX(p.secoesTotalizadasPct).toFixed(1)} ${scaleY(p.bolsonaroPct).toFixed(1)}`)
     .join(' ');
 
-  // Traçado contínuo 2026 até o ponto atual
-  const steps2026 = 24;
-  const points2026Curve: Array<{ x: number; y1: number; y2: number }> = [];
-  if (currentPct2026 > 0) {
-    const startY1 = Math.max(yMin, cand1Pct - 5);
-    const startY2 = Math.min(yMax, cand2Pct + 4);
-    for (let i = 1; i <= steps2026; i++) {
-      const p = (i / steps2026) * currentPct2026;
-      const progress = p / currentPct2026;
-      const y1 = startY1 + (cand1Pct - startY1) * Math.pow(progress, 0.8);
-      const y2 = startY2 + (cand2Pct - startY2) * Math.pow(progress, 0.8);
-      points2026Curve.push({ x: scaleX(p), y1: scaleY(y1), y2: scaleY(y2) });
+  // Mapear pontos reais para coordenadas do SVG
+  const pointsCand1: Array<{ x: number; y: number; pct: number }> = [];
+  const pointsCand2: Array<{ x: number; y: number; pct: number }> = [];
+
+  for (const pt of pointsToDraw) {
+    const p1 = findCandidatePct(cand1, pt.candidatos);
+    const p2 = findCandidatePct(cand2, pt.candidatos);
+
+    if (p1 !== null) {
+      pointsCand1.push({ x: scaleX(pt.urnasPct), y: scaleY(p1), pct: p1 });
+    }
+    if (p2 !== null) {
+      pointsCand2.push({ x: scaleX(pt.urnasPct), y: scaleY(p2), pct: p2 });
     }
   }
 
-  const pathCand12026 = points2026Curve.length > 0
-    ? points2026Curve.map((pt, idx) => `${idx === 0 ? 'M' : 'L'} ${pt.x.toFixed(1)} ${pt.y1.toFixed(1)}`).join(' ')
+  // Traçar linhas conectando estritamente pontos reais coletados ao longo da apuração
+  const pathCand12026 = pointsCand1.length > 1
+    ? pointsCand1.map((pt, idx) => `${idx === 0 ? 'M' : 'L'} ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`).join(' ')
     : '';
 
-  const pathCand22026 = points2026Curve.length > 0
-    ? points2026Curve.map((pt, idx) => `${idx === 0 ? 'M' : 'L'} ${pt.x.toFixed(1)} ${pt.y2.toFixed(1)}`).join(' ')
+  const pathCand22026 = pointsCand2.length > 1
+    ? pointsCand2.map((pt, idx) => `${idx === 0 ? 'M' : 'L'} ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`).join(' ')
     : '';
 
   const currentX = scaleX(currentPct2026);
@@ -208,6 +262,28 @@ export function TrajectoryChart({
               strokeWidth="2"
             />
           )}
+
+          {/* Marcadores de pontos históricos reais registrados ao longo da apuração */}
+          {pointsCand1.length > 1 && pointsCand1.slice(0, -1).map((pt, idx) => (
+            <circle
+              key={`c1-pt-${idx}`}
+              cx={pt.x}
+              cy={pt.y}
+              r="2"
+              fill={cand1Cor}
+              opacity="0.5"
+            />
+          ))}
+          {pointsCand2.length > 1 && pointsCand2.slice(0, -1).map((pt, idx) => (
+            <circle
+              key={`c2-pt-${idx}`}
+              cx={pt.x}
+              cy={pt.y}
+              r="2"
+              fill={cand2Cor}
+              opacity="0.5"
+            />
+          ))}
 
           {/* Marcador vertical da posição atual de 2026 */}
           {currentPct2026 > 0 && (
