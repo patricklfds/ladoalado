@@ -44,7 +44,7 @@ export function TrajectoryChart({
   cand2
 }: TrajectoryChartProps) {
   const width = 800;
-  const height = 180;
+  const height = 190;
   const padding = { top: 20, right: 110, bottom: 25, left: 35 };
 
   const plotW = width - padding.left - padding.right;
@@ -80,23 +80,40 @@ export function TrajectoryChart({
     pointsToDraw.sort((a, b) => a.urnasPct - b.urnasPct);
   }
 
-  // Definir mínimo e máximo de Y dinamicamente para acomodar qualquer candidato e histórico
-  const allRecordedValues: number[] = [
+  // Considerar estritamente os candidatos da disputa (1º, 2º e marco de 50%)
+  const candValues1 = pointsToDraw.map(p => findCandidatePct(cand1, p.candidatos)).filter((v): v is number => v !== null);
+  const candValues2 = pointsToDraw.map(p => findCandidatePct(cand2, p.candidatos)).filter((v): v is number => v !== null);
+
+  const relevantValues: number[] = [
     cand1Pct,
     cand2Pct,
-    ...pointsToDraw.flatMap(p => Object.values(p.candidatos))
+    50,
+    ...candValues1,
+    ...candValues2
   ].filter(v => typeof v === 'number' && !isNaN(v) && v > 0);
 
-  const minVal = Math.min(...allRecordedValues, 38);
-  const maxVal = Math.max(...allRecordedValues, 52);
-  const yMin = Math.max(0, Math.floor(minVal - 2));
-  const yMax = Math.min(100, Math.ceil(maxVal + 2));
+  const rawMin = Math.min(...relevantValues);
+  const rawMax = Math.max(...relevantValues);
+
+  // Escala focada na zona de disputa presidencial (mantendo 50% e os concorrentes com excelente respiro vertical)
+  const yMin = Math.max(0, Math.min(36, Math.floor(rawMin - 3)));
+  const yMax = Math.min(100, Math.max(54, Math.ceil(rawMax + 2)));
 
   const scaleX = (urnasPct: number) => padding.left + (Math.max(0, Math.min(100, urnasPct)) / 100) * plotW;
   const scaleY = (votosPct: number) => {
     const clamped = Math.max(yMin, Math.min(yMax, votosPct));
     return padding.top + plotH - ((clamped - yMin) / (yMax - yMin)) * plotH;
   };
+
+  // Marcadores do Eixo Y (múltiplos de 5 entre yMin e yMax, incluindo 50%)
+  const yTicks: number[] = [];
+  for (let val = Math.ceil(yMin / 5) * 5; val <= Math.floor(yMax / 5) * 5; val += 5) {
+    yTicks.push(val);
+  }
+  if (!yTicks.includes(50) && 50 >= yMin && 50 <= yMax) {
+    yTicks.push(50);
+    yTicks.sort((a, b) => a - b);
+  }
 
   // Traçado 2022 (Referência histórica dos 2 primeiros de 2022)
   const sample2022 = timeline2022.filter((p, i) => i === 0 || i % 6 === 0 || i === timeline2022.length - 1);
@@ -137,7 +154,6 @@ export function TrajectoryChart({
     : '';
 
   const currentX = scaleX(currentPct2026);
-  const y50 = scaleY(50);
 
   return (
     <section className="py-8 sm:py-10 border-b border-[var(--border)]">
@@ -175,28 +191,33 @@ export function TrajectoryChart({
           viewBox={`0 0 ${width} ${height}`}
           className="w-full h-auto min-w-[550px] overflow-visible"
         >
-          {/* Linha de 50% (Maioria absoluta) se estiver dentro da faixa */}
-          {50 >= yMin && 50 <= yMax && (
-            <>
-              <line
-                x1={padding.left}
-                y1={y50}
-                x2={width - padding.right}
-                y2={y50}
-                stroke="var(--border)"
-                strokeDasharray="2 4"
-                strokeWidth="1"
-              />
-              <text
-                x={padding.left - 6}
-                y={y50 + 3}
-                textAnchor="end"
-                className="fill-[var(--fg-subtle)] text-[10px] font-mono tabular-nums"
-              >
-                50%
-              </text>
-            </>
-          )}
+          {/* Marcadores e Linhas Guia do Eixo Y */}
+          {yTicks.map((val) => {
+            const y = scaleY(val);
+            const is50 = val === 50;
+            return (
+              <g key={`ytick-${val}`}>
+                <line
+                  x1={padding.left}
+                  y1={y}
+                  x2={width - padding.right}
+                  y2={y}
+                  stroke="var(--border)"
+                  strokeDasharray={is50 ? "3 3" : "1 4"}
+                  strokeWidth={is50 ? "1" : "0.75"}
+                  opacity={is50 ? 0.7 : 0.3}
+                />
+                <text
+                  x={padding.left - 6}
+                  y={y + 3}
+                  textAnchor="end"
+                  className={`tabular-nums text-[10px] font-mono ${is50 ? 'fill-[var(--fg)] font-medium' : 'fill-[var(--fg-subtle)]'}`}
+                >
+                  {val}%
+                </text>
+              </g>
+            );
+          })}
 
           {/* Marcadores do Eixo X (% de urnas) */}
           {[0, 25, 50, 75, 100].map((val) => {
