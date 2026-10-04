@@ -1,9 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server';
-import type { ElectionState, TSEApiResponse, CandidateResult } from '@/lib/types';
+import type { ElectionState, CandidateResult } from '@/lib/types';
 import { cleanPartyName, getCandidateColor } from '@/lib/candidateUtils';
 
+interface TSECandNode {
+  n: string;
+  nm?: string;
+  nmu?: string;
+  cc?: string;
+  vap: string;
+  pvap: string;
+  seq?: string;
+}
+
+interface TSEParNode {
+  sg?: string;
+  cand?: TSECandNode[];
+}
+
+interface TSEColigacaoNode {
+  par?: TSEParNode[];
+}
+
+interface TSECargoNode {
+  agr?: TSEColigacaoNode[];
+}
+
+interface TSEPayload {
+  hg?: string;
+  pst?: string;
+  s?: string | Record<string, string>;
+  st?: string;
+  vscv?: string;
+  v?: Record<string, string>;
+  carg?: TSECargoNode[];
+  cand?: TSECandNode[];
+}
+
 // Código oficial do pleito presidencial 2026 configurável
-const DEFAULT_ELECTION_CODE = process.env.NEXT_PUBLIC_TSE_ELECTION_CODE || '600';
+const DEFAULT_ELECTION_CODE = process.env.NEXT_PUBLIC_TSE_ELECTION_CODE || '6257';
 const DEFAULT_ELECTION_CYCLE = process.env.NEXT_PUBLIC_TSE_ELECTION_CYCLE || 'ele2026';
 
 function parseTSEFloat(value: string | undefined): number {
@@ -187,27 +221,44 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // Montar a URL do CDN do TSE de forma sanitizada
+  // Montar as URLs possíveis do CDN do TSE (suporta u.json oficial de 2026, r.json simplificado e u.jws)
   const paddedCode = electionCode.padStart(6, '0');
-  const tseUrl = `https://resultados.tse.jus.br/oficial/${cycle}/${electionCode}/dados-simplificados/br/br-c0001-e${paddedCode}-r.json`;
+  const candidateUrls = [
+    `https://resultados.tse.jus.br/oficial/${cycle}/${electionCode}/dados/br/br-c0001-e${paddedCode}-u.json`,
+    `https://resultados.tse.jus.br/oficial/${cycle}/${electionCode}/dados-simplificados/br/br-c0001-e${paddedCode}-r.json`,
+    `https://resultados.tse.jus.br/oficial/${cycle}/${electionCode}/dados/br/br-c0001-e${paddedCode}-u.jws`
+  ];
 
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 6000);
+    let response: Response | null = null;
+    let successfulUrl = '';
 
-    const response = await fetch(tseUrl, {
-      signal: controller.signal,
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'LadoALado-Eleicoes/1.0 (Jornalismo de Dados)'
-      },
-      next: { revalidate: 30 } // Next.js SWR cache na borda
-    });
+    for (const url of candidateUrls) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
+        const res = await fetch(url, {
+          signal: controller.signal,
+          headers: {
+            'Accept': 'application/json, text/plain, */*',
+            'User-Agent': 'LadoALado-Eleicoes/1.0 (Jornalismo de Dados)'
+          },
+          next: { revalidate: 15 } // SWR 15s na borda
+        });
+        clearTimeout(timeoutId);
 
-    clearTimeout(timeoutId);
+        if (res.ok) {
+          response = res;
+          successfulUrl = url;
+          break;
+        }
+      } catch {
+        // Tentar próxima URL candidata
+      }
+    }
 
-    if (!response.ok) {
-      console.warn(`[TSE API] Resposta não-OK (${response.status}) para ${tseUrl}. Ativando fallback demo.`);
+    if (!response || !response.ok) {
+      console.warn(`[TSE API] Nenhuma URL retornou 200 para pleito ${electionCode}. Ativando fallback demo.`);
       return NextResponse.json(generateDemoState2026(searchParams), {
         status: 200,
         headers: {
@@ -217,30 +268,81 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const tseData: TSEApiResponse = await response.json();
+    const rawText = await response.text();
+    let tseData: TSEPayload | null = null;
 
-    const secoesTotalizadasPct = parseTSEFloat(tseData.pst);
-    const totalSecoes = parseTSEInt(tseData.s);
-    const secoesApuradas = parseTSEInt(tseData.st);
-    const totalVotosValidos = parseTSEInt(tseData.vscv);
+    if (successfulUrl.endsWith('.jws') || rawText.startsWith('eyJ')) {
+      const parts = rawText.split('.');
+      if (parts.length >= 2) {
+        const jsonStr = Buffer.from(parts[1], 'base64url').toString('utf-8');
+        tseData = JSON.parse(jsonStr) as TSEPayload;
+      }
+    } else {
+      tseData = JSON.parse(rawText) as TSEPayload;
+    }
 
-    const candidatos: CandidateResult[] = (tseData.cand || []).map((c, idx) => {
-      const votos = parseTSEInt(c.vap);
-      const percentual = parseTSEFloat(c.pvap);
-      const partido = cleanPartyName(c.cc);
-      const candObj: CandidateResult = {
-        id: `cand-${c.n || idx}`,
-        nome: (c.nm || 'CANDIDATO').slice(0, 40),
-        numero: c.n || String(idx + 1),
-        partido,
-        votos,
-        percentual,
-        posicao: parseInt(c.seq, 10) || (idx + 1),
-        cor: ''
-      };
-      candObj.cor = getCandidateColor(candObj);
-      return candObj;
-    });
+    if (!tseData) {
+      throw new Error('Falha ao decodificar JSON do TSE');
+    }
+
+    let secoesTotalizadasPct = 0;
+    let totalSecoes = 0;
+    let secoesApuradas = 0;
+    let totalVotosValidos = 0;
+    const candidatos: CandidateResult[] = [];
+
+    if (tseData.s && typeof tseData.s === 'object') {
+      // Formato oficial 2026 (u.json / u.jws com estrutura completa)
+      const sObj = tseData.s;
+      secoesTotalizadasPct = parseTSEFloat(sObj.pst);
+      totalSecoes = parseTSEInt(sObj.ts);
+      secoesApuradas = parseTSEInt(sObj.st);
+
+      const vObj = (tseData.v || {}) as Record<string, string>;
+      totalVotosValidos = parseTSEInt(vObj.vv || vObj.tv);
+
+      if (Array.isArray(tseData.carg) && tseData.carg[0]?.agr) {
+        tseData.carg[0].agr.forEach((a: TSEColigacaoNode) => {
+          (a.par || []).forEach((p: TSEParNode) => {
+            (p.cand || []).forEach((c: TSECandNode) => {
+              const candObj: CandidateResult = {
+                id: `cand-${c.n}`,
+                nome: (c.nmu || c.nm || 'CANDIDATO').slice(0, 40),
+                numero: c.n,
+                partido: p.sg || cleanPartyName(c.cc),
+                votos: parseTSEInt(c.vap),
+                percentual: parseTSEFloat(c.pvap),
+                posicao: parseInt(c.seq || '1', 10) || 1,
+                cor: ''
+              };
+              candObj.cor = getCandidateColor(candObj);
+              candidatos.push(candObj);
+            });
+          });
+        });
+      }
+    } else {
+      // Formato dados-simplificados legado (r.json)
+      secoesTotalizadasPct = parseTSEFloat(tseData.pst);
+      totalSecoes = parseTSEInt(tseData.s as string);
+      secoesApuradas = parseTSEInt(tseData.st as string);
+      totalVotosValidos = parseTSEInt(tseData.vscv as string);
+
+      (tseData.cand || []).forEach((c: TSECandNode, idx: number) => {
+        const candObj: CandidateResult = {
+          id: `cand-${c.n || idx}`,
+          nome: (c.nm || 'CANDIDATO').slice(0, 40),
+          numero: c.n || String(idx + 1),
+          partido: cleanPartyName(c.cc),
+          votos: parseTSEInt(c.vap),
+          percentual: parseTSEFloat(c.pvap),
+          posicao: parseInt(c.seq || '1', 10) || (idx + 1),
+          cor: ''
+        };
+        candObj.cor = getCandidateColor(candObj);
+        candidatos.push(candObj);
+      });
+    }
 
     // Ordenar por percentual estritamente decrescente e atualizar posições dinamicamente
     candidatos.sort((a, b) => b.percentual - a.percentual);
