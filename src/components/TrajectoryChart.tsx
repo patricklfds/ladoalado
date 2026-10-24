@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import type { TimelinePoint2022, CandidateResult, TimelinePoint2026 } from '@/lib/types';
 import { formatCandidateName, getCandidateColor } from '@/lib/candidateUtils';
+import { interpolateByUrnas } from '@/lib/comparator';
 
 interface TrajectoryChartProps {
   timeline2022: TimelinePoint2022[];
@@ -30,6 +31,56 @@ function findCandidatePct(cand: CandidateResult | undefined, candsMap: Record<st
     const kParts = key.toUpperCase().trim().split(' ');
     if (candParts.some(p => kParts.includes(p))) {
       return val;
+    }
+  }
+
+  return null;
+}
+
+function interpolate2026AtUrnas(
+  targetPct: number,
+  points: TimelinePoint2026[],
+  currentPct2026: number,
+  cand1?: CandidateResult,
+  cand2?: CandidateResult
+): { p1: number; p2: number; timestamp?: string } | null {
+  if (currentPct2026 <= 0 || targetPct > currentPct2026 + 0.05 || points.length === 0) {
+    return null;
+  }
+
+  const first = points[0];
+  if (targetPct <= first.urnasPct) {
+    const p1 = findCandidatePct(cand1, first.candidatos);
+    const p2 = findCandidatePct(cand2, first.candidatos);
+    if (p1 === null || p2 === null) return null;
+    return { p1, p2, timestamp: first.timestamp };
+  }
+
+  const last = points[points.length - 1];
+  if (targetPct >= last.urnasPct) {
+    const p1 = findCandidatePct(cand1, last.candidatos);
+    const p2 = findCandidatePct(cand2, last.candidatos);
+    if (p1 === null || p2 === null) return null;
+    return { p1, p2, timestamp: last.timestamp };
+  }
+
+  for (let i = 0; i < points.length - 1; i++) {
+    const ptA = points[i];
+    const ptB = points[i + 1];
+    if (ptA.urnasPct <= targetPct && ptB.urnasPct >= targetPct) {
+      const p1A = findCandidatePct(cand1, ptA.candidatos);
+      const p2A = findCandidatePct(cand2, ptA.candidatos);
+      const p1B = findCandidatePct(cand1, ptB.candidatos);
+      const p2B = findCandidatePct(cand2, ptB.candidatos);
+      if (p1A === null || p2A === null || p1B === null || p2B === null) return null;
+
+      const span = ptB.urnasPct - ptA.urnasPct;
+      const ratio = span <= 0.0001 ? 0 : (targetPct - ptA.urnasPct) / span;
+      return {
+        p1: Number((p1A + (p1B - p1A) * ratio).toFixed(2)),
+        p2: Number((p2A + (p2B - p2A) * ratio).toFixed(2)),
+        timestamp: ratio < 0.5 ? ptA.timestamp : ptB.timestamp
+      };
     }
   }
 
@@ -72,16 +123,19 @@ export function TrajectoryChart({
   cand1,
   cand2
 }: TrajectoryChartProps) {
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const [hoverPct, setHoverPct] = useState<number | null>(null);
+
   const width = 800;
-  const height = 190;
-  const padding = { top: 20, right: 110, bottom: 25, left: 35 };
+  const height = 195;
+  const padding = { top: 22, right: 110, bottom: 25, left: 35 };
 
   const plotW = width - padding.left - padding.right;
   const plotH = height - padding.top - padding.bottom;
 
   // Candidatos atuais
-  const cand1Pct = cand1?.percentual ?? 47.85;
-  const cand2Pct = cand2?.percentual ?? 44.10;
+  const cand1Pct = cand1?.percentual ?? 50.45;
+  const cand2Pct = cand2?.percentual ?? 49.55;
 
   const cand1Nome = cand1 ? formatCandidateName(cand1.nome) : '1º Colocado';
   const cand2Nome = cand2 ? formatCandidateName(cand2.nome) : '2º Colocado';
@@ -199,9 +253,49 @@ export function TrajectoryChart({
     }
   }
 
+  // Manipuladores do Scrubber Interativo (Mouse + Touch)
+  const updateHoverFromClientX = (clientX: number) => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    if (rect.width <= 0) return;
+    const svgX = ((clientX - rect.left) / rect.width) * width;
+    const rawPct = ((svgX - padding.left) / plotW) * 100;
+    if (rawPct < -2 || rawPct > 102) {
+      setHoverPct(null);
+      return;
+    }
+    const clamped = Math.max(0, Math.min(100, Number(rawPct.toFixed(2))));
+    // Atração magnética sutil ao marco da virada de 2022 (67.76%) e à posição atual de 2026
+    if (Math.abs(clamped - 67.76) < 0.65) {
+      setHoverPct(67.76);
+    } else if (currentPct2026 > 0 && Math.abs(clamped - currentPct2026) < 0.65) {
+      setHoverPct(currentPct2026);
+    } else {
+      setHoverPct(clamped);
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    updateHoverFromClientX(e.clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<SVGSVGElement>) => {
+    if (e.touches.length > 0) {
+      updateHoverFromClientX(e.touches[0].clientX);
+    }
+  };
+
+  // Dados interpolados para o ponto inspecionado pelo Scrubber
+  const hover2022 = hoverPct !== null && timeline2022.length > 0 ? interpolateByUrnas(timeline2022, hoverPct) : null;
+  const hover2026 = hoverPct !== null ? interpolate2026AtUrnas(hoverPct, pointsToDraw, currentPct2026, cand1, cand2) : null;
+  const hoverX = hoverPct !== null ? scaleX(hoverPct) : null;
+  const virada2022X = scaleX(67.76);
+  const y50 = scaleY(50);
+
   return (
     <section className="py-8 sm:py-10 border-b border-[var(--border)]">
-      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 mb-3">
         <div>
           <h3 className="font-semibold text-lg tracking-tight text-[var(--fg)]">
             Curva de Apuração
@@ -228,12 +322,53 @@ export function TrajectoryChart({
         </div>
       </div>
 
+      {/* Barra de Leitura do Scrubber Interativo */}
+      <div className="mb-3 min-h-[24px] flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono border-b border-[var(--border)] pb-2">
+        {hoverPct !== null && hover2022 ? (
+          <>
+            <div className="flex items-center gap-2 text-[var(--fg)]">
+              <span className="font-semibold tabular-nums">{hoverPct.toFixed(2)}% das urnas</span>
+              <span className="text-[var(--fg-subtle)]">·</span>
+              <span className="text-[var(--fg-muted)]">
+                2022 às <strong className="text-[var(--fg)] font-medium">{hover2022.timestamp}</strong>
+                {Math.abs(hoverPct - 67.76) < 0.1 ? ' (virada histórica)' : ''}
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 tabular-nums">
+              {hover2026 && (
+                <span className="text-[var(--fg)]">
+                  <span className="text-[var(--fg-subtle)]">2026:</span>{' '}
+                  <strong style={{ color: cand1Cor }}>{cand1Nome.split(' ')[0]} {hover2026.p1.toFixed(2)}%</strong>
+                  {' · '}
+                  <strong style={{ color: cand2Cor }}>{cand2Nome.split(' ')[0]} {hover2026.p2.toFixed(2)}%</strong>
+                </span>
+              )}
+              <span className="text-[var(--fg-muted)]">
+                <span className="text-[var(--fg-subtle)]">2022:</span>{' '}
+                Lula {hover2022.lulaPct.toFixed(2)}% · Bolsonaro {hover2022.bolsonaroPct.toFixed(2)}%
+              </span>
+            </div>
+          </>
+        ) : (
+          <div className="w-full flex items-center justify-between text-[var(--fg-subtle)]">
+            <span>Passe o cursor ou deslize sobre o gráfico para inspecionar qualquer ponto da apuração</span>
+            <span className="hidden sm:inline">Virada em 2022: 67,76% (18h44)</span>
+          </div>
+        )}
+      </div>
+
       <div className="w-full overflow-x-auto">
         <svg
+          ref={svgRef}
           role="img"
           aria-label={`Gráfico de curva de apuração comparada: ${cand1Nome} (${cand1Pct.toFixed(1)}%) e ${cand2Nome} (${cand2Pct.toFixed(1)}%) com referência histórica de 2022`}
           viewBox={`0 0 ${width} ${height}`}
-          className="w-full h-auto min-w-[550px] overflow-visible"
+          onMouseMove={handleMouseMove}
+          onMouseLeave={() => setHoverPct(null)}
+          onTouchStart={handleTouchMove}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={() => setHoverPct(null)}
+          className="w-full h-auto min-w-[550px] overflow-visible select-none cursor-crosshair touch-pan-y"
         >
           {/* Marcadores e Linhas Guia do Eixo Y */}
           {yTicks.map((val) => {
@@ -296,7 +431,7 @@ export function TrajectoryChart({
               stroke="var(--color-pt)"
               strokeWidth="1.2"
               strokeDasharray="2 2"
-              opacity="0.35"
+              opacity={hoverPct !== null ? 0.5 : 0.35}
             />
           )}
           {pathBolso2022 && (
@@ -306,8 +441,30 @@ export function TrajectoryChart({
               stroke="var(--color-pl)"
               strokeWidth="1.2"
               strokeDasharray="2 2"
-              opacity="0.35"
+              opacity={hoverPct !== null ? 0.5 : 0.35}
             />
+          )}
+
+          {/* Marco discreto da Virada Histórica de 2022 (67,76% · 50,0%) */}
+          {timeline2022.length > 0 && (
+            <g opacity={hoverPct !== null && Math.abs(hoverPct - 67.76) < 0.2 ? 1 : 0.55}>
+              <circle
+                cx={virada2022X}
+                cy={y50}
+                r="2.5"
+                fill="var(--bg)"
+                stroke="var(--fg-subtle)"
+                strokeWidth="1.2"
+              />
+              <text
+                x={virada2022X}
+                y={y50 - 6}
+                textAnchor="middle"
+                className="fill-[var(--fg-subtle)] text-[9px] font-mono tabular-nums"
+              >
+                virada 22 (67,8%)
+              </text>
+            </g>
           )}
 
           {/* Curvas 2026 (Sólidas com cores dinâmicas dos candidatos 1º e 2º) */}
@@ -352,7 +509,7 @@ export function TrajectoryChart({
 
           {/* Marcador vertical da posição atual de 2026 */}
           {currentPct2026 > 0 && (
-            <g>
+            <g opacity={hoverPct !== null ? 0.45 : 1}>
               <line
                 x1={currentX}
                 y1={padding.top}
@@ -396,6 +553,80 @@ export function TrajectoryChart({
               </text>
             </g>
           )}
+
+          {/* Cursor Scrubber Interativo (Hover / Touch) */}
+          {hoverX !== null && hoverPct !== null && hover2022 && (
+            <g className="pointer-events-none">
+              <line
+                x1={hoverX}
+                y1={padding.top}
+                x2={hoverX}
+                y2={padding.top + plotH}
+                stroke="var(--fg)"
+                strokeWidth="1"
+                opacity="0.5"
+              />
+
+              {/* Rótulo de % de urnas no topo do cursor */}
+              <text
+                x={Math.min(width - padding.right - 25, Math.max(padding.left + 25, hoverX))}
+                y={padding.top - 7}
+                textAnchor="middle"
+                className="fill-[var(--fg)] text-[10px] font-mono font-medium tabular-nums"
+              >
+                {hoverPct.toFixed(1)}% · {hover2022.timestamp}
+              </text>
+
+              {/* Pontos 2022 na posição inspecionada */}
+              {hoverPct > 0 && (
+                <>
+                  <circle
+                    cx={hoverX}
+                    cy={scaleY(hover2022.lulaPct)}
+                    r="2.8"
+                    fill="var(--bg)"
+                    stroke="var(--color-pt)"
+                    strokeWidth="1.5"
+                  />
+                  <circle
+                    cx={hoverX}
+                    cy={scaleY(hover2022.bolsonaroPct)}
+                    r="2.8"
+                    fill="var(--bg)"
+                    stroke="var(--color-pl)"
+                    strokeWidth="1.5"
+                  />
+                </>
+              )}
+
+              {/* Pontos 2026 na posição inspecionada (se já apurado) */}
+              {hover2026 && (
+                <>
+                  <circle
+                    cx={hoverX}
+                    cy={scaleY(hover2026.p1)}
+                    r="4"
+                    fill={cand1Cor}
+                  />
+                  <circle
+                    cx={hoverX}
+                    cy={scaleY(hover2026.p2)}
+                    r="4"
+                    fill={cand2Cor}
+                  />
+                </>
+              )}
+            </g>
+          )}
+
+          {/* Área de captura transparente cobrindo todo o plot para interação suave */}
+          <rect
+            x={padding.left}
+            y={padding.top}
+            width={plotW}
+            height={plotH}
+            fill="transparent"
+          />
         </svg>
       </div>
     </section>

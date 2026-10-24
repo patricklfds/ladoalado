@@ -1,8 +1,69 @@
 'use client';
 
 import React from 'react';
-import type { ElectionState, ComparisonMode } from '@/lib/types';
+import type { ElectionState, ComparisonMode, CandidateResult } from '@/lib/types';
 import { formatCandidateName, getCandidateColor, getHistoricalReference } from '@/lib/candidateUtils';
+
+interface RunoffMathResult {
+  isWaiting: boolean;
+  diffVotos: number;
+  votosRestantes: number;
+  pctNecessario: number;
+  isDefined: boolean;
+}
+
+function computeRunoffMath(
+  pct: number,
+  totalValidos: number,
+  lider?: CandidateResult,
+  segundo?: CandidateResult
+): RunoffMathResult {
+  if (!lider || !segundo || pct <= 0) {
+    return {
+      isWaiting: true,
+      diffVotos: 0,
+      votosRestantes: 0,
+      pctNecessario: 50,
+      isDefined: false
+    };
+  }
+
+  const v1 = lider.votos || 0;
+  const v2 = segundo.votos || 0;
+  const diffVotos = Math.max(0, v1 - v2);
+  const valAtuais = Math.max(totalValidos || 0, v1 + v2);
+
+  const projTotal = pct >= 100 ? valAtuais : Math.round(valAtuais / (pct / 100));
+  const votosRestantes = Math.max(0, projTotal - valAtuais);
+
+  const pctNecessario =
+    votosRestantes > 0
+      ? ((votosRestantes + diffVotos) / (2 * votosRestantes)) * 100
+      : diffVotos > 0
+      ? 100.1
+      : 50;
+
+  const isDefined =
+    pct >= 100 || (votosRestantes === 0 && diffVotos > 0) || diffVotos > votosRestantes || pctNecessario > 100;
+
+  return {
+    isWaiting: false,
+    diffVotos,
+    votosRestantes,
+    pctNecessario,
+    isDefined
+  };
+}
+
+function formatCompactVotes(votos: number): string {
+  if (votos >= 1_000_000) {
+    return `${(votos / 1_000_000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M`;
+  }
+  if (votos >= 1_000) {
+    return `${Math.round(votos / 1_000).toLocaleString('pt-BR')} mil`;
+  }
+  return votos.toLocaleString('pt-BR');
+}
 
 interface ComparisonArenaProps {
   estado2026: ElectionState | null;
@@ -41,6 +102,9 @@ export function ComparisonArena({
 
   const refLider2026 = getHistoricalReference(lider2026, cands2022);
   const refSegundo2026 = getHistoricalReference(segundo2026, cands2022);
+
+  const math2026 = computeRunoffMath(pct2026, estado2026?.totalVotosValidos ?? 0, lider2026, segundo2026);
+  const math2022 = computeRunoffMath(pct2022, estado2022?.totalVotosValidos ?? 0, lider2022, segundo2022);
 
   return (
     <section className="py-8 sm:py-10 border-b border-[var(--border)]">
@@ -177,6 +241,46 @@ export function ComparisonArena({
               </div>
             )}
           </div>
+
+          {/* Termômetro de Virada & Definição Matemática 2026 */}
+          <div className="mt-6 pt-4 border-t border-[var(--border)] font-mono text-xs space-y-1">
+            <div className="flex items-center justify-between gap-2 text-[var(--fg-muted)]">
+              <span>
+                Diferença:{' '}
+                <strong className="font-medium tabular-nums text-[var(--fg)]">
+                  {math2026.diffVotos.toLocaleString('pt-BR')} votos
+                </strong>
+              </span>
+              {math2026.isWaiting ? (
+                <span className="text-[11px] text-[var(--fg-subtle)]">Urnas em 0,00%</span>
+              ) : math2026.isDefined ? (
+                <span className="text-[11px] font-semibold text-[var(--color-positive)]">
+                  Matematicamente definido
+                </span>
+              ) : (
+                <span className="text-[11px] text-[var(--fg-subtle)] tabular-nums">
+                  Restam ~{formatCompactVotes(math2026.votosRestantes)} votos válidos
+                </span>
+              )}
+            </div>
+            <div className="text-[11px] text-[var(--fg-subtle)]">
+              {math2026.isWaiting ? (
+                <span>Projeção matemática de virada ativa a partir do 1º boletim</span>
+              ) : math2026.isDefined && lider2026 ? (
+                <span>
+                  Vantagem de <strong className="text-[var(--fg)] font-medium">{formatCandidateName(lider2026.nome)}</strong> supera os votos válidos restantes
+                </span>
+              ) : segundo2026 ? (
+                <span>
+                  Para virar, <strong className="text-[var(--fg-muted)] font-medium">{formatCandidateName(segundo2026.nome)}</strong> precisa de{' '}
+                  <strong className="text-[var(--fg)] font-medium tabular-nums">
+                    {math2026.pctNecessario.toFixed(2)}%
+                  </strong>{' '}
+                  dos votos restantes
+                </span>
+              ) : null}
+            </div>
+          </div>
         </div>
 
         {/* ================= COLUNA 2022 (HISTÓRICO) ================= */}
@@ -283,6 +387,46 @@ export function ComparisonArena({
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Termômetro Histórico de Virada & Definição Matemática 2022 */}
+          <div className="mt-6 pt-4 border-t border-[var(--border)] font-mono text-xs space-y-1">
+            <div className="flex items-center justify-between gap-2 text-[var(--fg-subtle)]">
+              <span>
+                Diferença em 2022:{' '}
+                <strong className="font-medium tabular-nums text-[var(--fg-muted)]">
+                  {math2022.diffVotos.toLocaleString('pt-BR')} votos
+                </strong>
+              </span>
+              {math2022.isWaiting ? (
+                <span className="text-[11px]">Urnas em 0,00%</span>
+              ) : math2022.isDefined ? (
+                <span className="text-[11px] font-medium text-[var(--fg-muted)]">
+                  Matematicamente definido
+                </span>
+              ) : (
+                <span className="text-[11px] tabular-nums">
+                  Restavam ~{formatCompactVotes(math2022.votosRestantes)} votos válidos
+                </span>
+              )}
+            </div>
+            <div className="text-[11px] text-[var(--fg-subtle)]">
+              {math2022.isWaiting ? (
+                <span>Virada histórica em 67,76% (18h44) · Definido em 98,81% (19h57)</span>
+              ) : math2022.isDefined && lider2022 ? (
+                <span>
+                  Vantagem de <strong className="text-[var(--fg-muted)] font-medium">{formatCandidateName(lider2022.nome)}</strong> superou os votos restantes (às 19h57)
+                </span>
+              ) : segundo2022 ? (
+                <span>
+                  Para virar, <strong className="text-[var(--fg-muted)] font-medium">{formatCandidateName(segundo2022.nome)}</strong> precisava de{' '}
+                  <strong className="text-[var(--fg-muted)] font-medium tabular-nums">
+                    {math2022.pctNecessario.toFixed(2)}%
+                  </strong>{' '}
+                  dos votos restantes
+                </span>
+              ) : null}
+            </div>
           </div>
         </div>
       </div>
