@@ -28,8 +28,11 @@ export function point2022ToElectionState(point: TimelinePoint2022): ElectionStat
       percentual: point.bolsonaroPct,
       posicao: point.bolsonaroPct > point.lulaPct ? 1 : 2,
       cor: '#1E3A8A'
-    },
-    {
+    }
+  ];
+
+  if (point.tebetPct > 0 || point.tebetVotos > 0) {
+    candidatos.push({
       id: 'tebet-2022',
       nome: 'SIMONE TEBET',
       numero: '15',
@@ -38,8 +41,11 @@ export function point2022ToElectionState(point: TimelinePoint2022): ElectionStat
       percentual: point.tebetPct,
       posicao: 3,
       cor: '#4B5563'
-    },
-    {
+    });
+  }
+
+  if (point.ciroPct > 0 || point.ciroVotos > 0) {
+    candidatos.push({
       id: 'ciro-2022',
       nome: 'CIRO GOMES',
       numero: '12',
@@ -48,10 +54,10 @@ export function point2022ToElectionState(point: TimelinePoint2022): ElectionStat
       percentual: point.ciroPct,
       posicao: 4,
       cor: '#6B7280'
-    }
-  ];
+    });
+  }
 
-  if (point.outrosPct > 0) {
+  if (point.outrosPct > 0 || point.outrosVotos > 0) {
     candidatos.push({
       id: 'outros-2022',
       nome: 'OUTROS CANDIDATOS',
@@ -65,7 +71,7 @@ export function point2022ToElectionState(point: TimelinePoint2022): ElectionStat
   }
 
   // Ordenar pela posição real e reindexar dinamicamente (para refletir a virada de 2022)
-  candidatos.sort((a, b) => b.percentual - a.percentual);
+  candidatos.sort((a, b) => (b.percentual - a.percentual) || (b.votos - a.votos) || (a.posicao - b.posicao));
   candidatos.forEach((c, idx) => {
     c.posicao = idx + 1;
   });
@@ -73,7 +79,7 @@ export function point2022ToElectionState(point: TimelinePoint2022): ElectionStat
   return {
     ano: 2022,
     timestamp: point.timestamp,
-    dataHoraISO: `2022-10-02T${point.timestamp}:00-03:00`,
+    dataHoraISO: `2022-10-30T${point.timestamp}:00-03:00`,
     secoesTotalizadasPct: point.secoesTotalizadasPct,
     totalSecoes: point.totalSecoes,
     secoesApuradas: point.secoesApuradas,
@@ -125,10 +131,14 @@ export function interpolateByUrnas(
   const t = (clampedPct - p1.secoesTotalizadasPct) / (p2.secoesTotalizadasPct - p1.secoesTotalizadasPct);
 
   const lulaPct = Number((p1.lulaPct + (p2.lulaPct - p1.lulaPct) * t).toFixed(2));
-  const bolsonaroPct = Number((p1.bolsonaroPct + (p2.bolsonaroPct - p1.bolsonaroPct) * t).toFixed(2));
-  const tebetPct = Number((p1.tebetPct + (p2.tebetPct - p1.tebetPct) * t).toFixed(2));
-  const ciroPct = Number((p1.ciroPct + (p2.ciroPct - p1.ciroPct) * t).toFixed(2));
-  const outrosPct = Number(Math.max(0, 100 - (lulaPct + bolsonaroPct + tebetPct + ciroPct)).toFixed(2));
+  const isSecondRound = p1.tebetPct === 0 && p2.tebetPct === 0 && p1.ciroPct === 0 && p2.ciroPct === 0 && p1.outrosPct === 0 && p2.outrosPct === 0;
+
+  const bolsonaroPct = isSecondRound
+    ? Number(Math.max(0, 100 - lulaPct).toFixed(2))
+    : Number((p1.bolsonaroPct + (p2.bolsonaroPct - p1.bolsonaroPct) * t).toFixed(2));
+  const tebetPct = isSecondRound ? 0 : Number((p1.tebetPct + (p2.tebetPct - p1.tebetPct) * t).toFixed(2));
+  const ciroPct = isSecondRound ? 0 : Number((p1.ciroPct + (p2.ciroPct - p1.ciroPct) * t).toFixed(2));
+  const outrosPct = isSecondRound ? 0 : Number(Math.max(0, 100 - (lulaPct + bolsonaroPct + tebetPct + ciroPct)).toFixed(2));
 
   // Interpolação do horário em que 2022 atingiu essa porcentagem
   const exactMinutesFrom17 = p1.minuteIndex + (p2.minuteIndex - p1.minuteIndex) * t;
@@ -138,13 +148,15 @@ export function interpolateByUrnas(
   const formattedTime = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
 
   const secoesApuradas = Math.round((clampedPct / 100) * p1.totalSecoes);
-  const totalVotosValidos = Math.round((clampedPct / 100) * 118580080);
+  const totalVotosValidos = Math.round((clampedPct / 100) * 118552353);
 
   const lulaVotos = Math.round((lulaPct / 100) * totalVotosValidos);
-  const bolsonaroVotos = Math.round((bolsonaroPct / 100) * totalVotosValidos);
-  const tebetVotos = Math.round((tebetPct / 100) * totalVotosValidos);
-  const ciroVotos = Math.round((ciroPct / 100) * totalVotosValidos);
-  const outrosVotos = Math.max(0, totalVotosValidos - (lulaVotos + bolsonaroVotos + tebetVotos + ciroVotos));
+  const bolsonaroVotos = isSecondRound
+    ? Math.max(0, totalVotosValidos - lulaVotos)
+    : Math.round((bolsonaroPct / 100) * totalVotosValidos);
+  const tebetVotos = isSecondRound ? 0 : Math.round((tebetPct / 100) * totalVotosValidos);
+  const ciroVotos = isSecondRound ? 0 : Math.round((ciroPct / 100) * totalVotosValidos);
+  const outrosVotos = isSecondRound ? 0 : Math.max(0, totalVotosValidos - (lulaVotos + bolsonaroVotos + tebetVotos + ciroVotos));
 
   return {
     timestamp: formattedTime,
@@ -181,7 +193,13 @@ export function findByTime(
   const parts = timeString.split(':');
   if (parts.length < 2) return timeline[0];
 
-  const targetMinutes = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+  const rawHours = parseInt(parts[0], 10);
+  const mins = parseInt(parts[1], 10);
+  if (isNaN(rawHours) || isNaN(mins)) return timeline[0];
+
+  // Se o horário for de madrugada (00h–05h), considerar continuação da noite pós-17h
+  const adjustedHours = rawHours < 6 ? rawHours + 24 : rawHours;
+  const targetMinutes = adjustedHours * 60 + mins;
   const startMinutes = 17 * 60; // 17:00
 
   const minuteIndex = targetMinutes - startMinutes;
@@ -208,10 +226,15 @@ export function calculatePaceDifferenceMinutes(
   const parts2026 = time2026Str.split(':');
   if (parts2026.length < 2) return 0;
 
-  const currentMinutes2026 = parseInt(parts2026[0], 10) * 60 + parseInt(parts2026[1], 10);
+  const rawHours = parseInt(parts2026[0], 10);
+  const mins = parseInt(parts2026[1], 10);
+  if (isNaN(rawHours) || isNaN(mins)) return 0;
 
-  // Se a consulta for feita antes das 17h e não for simulação de noite, não distorcer o cálculo
-  if (currentMinutes2026 < 17 * 60) {
+  const adjustedHours = rawHours < 6 ? rawHours + 24 : rawHours;
+  const currentMinutes2026 = adjustedHours * 60 + mins;
+
+  // Se a consulta for feita antes das 17h e não houver urnas apuradas, não distorcer o cálculo
+  if (currentMinutes2026 < 17 * 60 || matching2022Point.secoesTotalizadasPct <= 0) {
     return 0;
   }
 

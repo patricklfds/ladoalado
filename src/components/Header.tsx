@@ -109,7 +109,7 @@ export function Header({
             Lado a Lado
           </span>
           <span className="text-xs font-mono text-[var(--fg-muted)] tracking-wider">
-            2026 vs 2022
+            2026 vs 2022 · 2º Turno
           </span>
           {isDemo && (
             <span className="text-[10px] font-mono uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">

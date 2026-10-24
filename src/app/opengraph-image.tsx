@@ -46,7 +46,7 @@ export default async function Image() {
                 border: '1px solid #202024',
               }}
             >
-              2026 vs 2022
+              2026 vs 2022 · 2º Turno
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -100,9 +100,9 @@ export default async function Image() {
           }}
         >
           <div style={{ display: 'flex', gap: '30px', fontSize: 15, fontFamily: 'monospace', color: '#71717A' }}>
-            <span>● 50% / 50% Espelhado</span>
-            <span>● Atualização a cada 60s</span>
-            <span>● Zero Vibe-Coding</span>
+            <span>● 2º Turno Presidencial</span>
+            <span>● Atualização a cada 20s</span>
+            <span>● Dados Oficiais TSE</span>
           </div>
           <span style={{ fontSize: 15, fontFamily: 'monospace', color: '#EDEDEA' }}>
             ladoalado.app

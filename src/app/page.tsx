@@ -32,7 +32,9 @@ export default function HomePage() {
   } = useElectionData();
 
   const isDemo = estado2026?.origem.includes('demo');
-  const cands2026 = [...(estado2026?.candidatos || [])].sort((a, b) => b.percentual - a.percentual);
+  const cands2026 = [...(estado2026?.candidatos || [])].sort(
+    (a, b) => (b.percentual - a.percentual) || (b.votos - a.votos) || (a.posicao - b.posicao)
+  );
   const secoesPct = estado2026?.secoesTotalizadasPct ?? 0;
 
   return (

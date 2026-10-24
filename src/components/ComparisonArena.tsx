@@ -23,9 +23,16 @@ export function ComparisonArena({
   margem2026,
   margem2022
 }: ComparisonArenaProps) {
-  // Ordenação garantidamente dinâmica
-  const cands2026 = [...(estado2026?.candidatos || [])].sort((a, b) => b.percentual - a.percentual);
-  const cands2022 = [...(estado2022?.candidatos || [])].sort((a, b) => b.percentual - a.percentual);
+  // Ordenação garantidamente dinâmica com desempate determinístico em 0%
+  const cands2026 = [...(estado2026?.candidatos || [])].sort(
+    (a, b) => (b.percentual - a.percentual) || (b.votos - a.votos) || (a.posicao - b.posicao)
+  );
+  const cands2022 = [...(estado2022?.candidatos || [])].sort(
+    (a, b) => (b.percentual - a.percentual) || (b.votos - a.votos) || (a.posicao - b.posicao)
+  );
+
+  const pct2026 = estado2026?.secoesTotalizadasPct ?? 0;
+  const pct2022 = estado2022?.secoesTotalizadasPct ?? 0;
 
   const lider2026 = cands2026[0];
   const segundo2026 = cands2026[1];
@@ -91,7 +98,15 @@ export function ComparisonArena({
                 <div className="mt-2 flex items-center justify-between text-xs font-mono text-[var(--fg-muted)]">
                   <span>{lider2026.votos.toLocaleString('pt-BR')} votos</span>
                   {refLider2026 && (
-                    <span className={refLider2026.delta >= 0 ? 'text-[var(--color-positive)] font-medium' : 'text-[var(--color-negative)] font-medium'}>
+                    <span
+                      className={
+                        pct2026 === 0 && refLider2026.delta === 0
+                          ? 'text-[var(--fg-subtle)]'
+                          : refLider2026.delta >= 0
+                          ? 'text-[var(--color-positive)] font-medium'
+                          : 'text-[var(--color-negative)] font-medium'
+                      }
+                    >
                       {refLider2026.delta >= 0 ? `+${refLider2026.delta.toFixed(2)}%` : `${refLider2026.delta.toFixed(2)}%`} {refLider2026.label} ({refLider2026.percentual.toFixed(2)}%)
                     </span>
                   )}
@@ -135,7 +150,15 @@ export function ComparisonArena({
                 <div className="mt-2 flex items-center justify-between text-xs font-mono text-[var(--fg-muted)]">
                   <span>{segundo2026.votos.toLocaleString('pt-BR')} votos</span>
                   {refSegundo2026 && (
-                    <span className={refSegundo2026.delta >= 0 ? 'text-[var(--color-positive)] font-medium' : 'text-[var(--color-negative)] font-medium'}>
+                    <span
+                      className={
+                        pct2026 === 0 && refSegundo2026.delta === 0
+                          ? 'text-[var(--fg-subtle)]'
+                          : refSegundo2026.delta >= 0
+                          ? 'text-[var(--color-positive)] font-medium'
+                          : 'text-[var(--color-negative)] font-medium'
+                      }
+                    >
                       {refSegundo2026.delta >= 0 ? `+${refSegundo2026.delta.toFixed(2)}%` : `${refSegundo2026.delta.toFixed(2)}%`} {refSegundo2026.label} ({refSegundo2026.percentual.toFixed(2)}%)
                     </span>
                   )}
@@ -207,7 +230,7 @@ export function ComparisonArena({
 
                 <div className="mt-2 flex items-center justify-between text-xs font-mono text-[var(--fg-subtle)]">
                   <span>{lider2022.votos.toLocaleString('pt-BR')} votos</span>
-                  <span>Liderava neste ponto da apuração</span>
+                  <span>{pct2022 > 0 ? 'Liderava neste ponto da apuração' : 'Aguardando início da apuração'}</span>
                 </div>
 
                 <div className="mt-3 w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
@@ -246,7 +269,7 @@ export function ComparisonArena({
 
                 <div className="mt-2 flex items-center justify-between text-xs font-mono text-[var(--fg-subtle)]">
                   <span>{segundo2022.votos.toLocaleString('pt-BR')} votos</span>
-                  <span>Segundo colocado</span>
+                  <span>{pct2022 > 0 ? 'Segundo colocado' : 'Aguardando início da apuração'}</span>
                 </div>
 
                 <div className="mt-3 w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">

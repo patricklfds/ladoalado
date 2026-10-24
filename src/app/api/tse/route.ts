@@ -32,12 +32,16 @@ interface TSEPayload {
   st?: string;
   vscv?: string;
   v?: Record<string, string>;
+  e?: Record<string, string>;
   carg?: TSECargoNode[];
   cand?: TSECandNode[];
 }
 
-// Código oficial do pleito presidencial 2026 configurável
-const DEFAULT_ELECTION_CODE = process.env.NEXT_PUBLIC_TSE_ELECTION_CODE || '6257';
+// Código oficial do 2º Turno Presidencial 2026 no CDN do TSE (6258)
+// Ignora códigos legados do 1º turno ('600' ou '6257') caso ainda estejam em variáveis de ambiente antigas
+const envCode = process.env.NEXT_PUBLIC_TSE_ELECTION_CODE;
+const DEFAULT_ELECTION_CODE =
+  envCode && envCode !== '600' && envCode !== '6257' ? envCode : '6258';
 const DEFAULT_ELECTION_CYCLE = process.env.NEXT_PUBLIC_TSE_ELECTION_CYCLE || 'ele2026';
 
 function parseTSEFloat(value: string | undefined): number {
@@ -72,103 +76,9 @@ function isRateLimited(ip: string, maxRequests = 60, windowMs = 60000): boolean 
   return record.count > maxRequests;
 }
 
-// Buffer histórico em memória para traçar a evolução real das urnas de 2026 ao longo do tempo
-const historicalTimeline2026: TimelinePoint2026[] = [
-  {
-    urnasPct: 1.42,
-    timestamp: '17:23:37',
-    candidatos: {
-      'FLAVIO BOLSONARO': 49.06,
-      'FLAVIO NANTES BOLSONARO': 49.06,
-      'LULA': 42.29,
-      'LUIZ INÁCIO LULA DA SILVA': 42.29,
-      'ESCRITOR AUGUSTO CURY': 3.07,
-      'RENAN SANTOS': 2.48,
-      'RONALDO CAIADO': 2.32
-    }
-  },
-  {
-    urnasPct: 5.20,
-    timestamp: '17:35:10',
-    candidatos: {
-      'FLAVIO BOLSONARO': 49.52,
-      'FLAVIO NANTES BOLSONARO': 49.52,
-      'LULA': 41.98,
-      'LUIZ INÁCIO LULA DA SILVA': 41.98
-    }
-  },
-  {
-    urnasPct: 9.80,
-    timestamp: '17:48:22',
-    candidatos: {
-      'FLAVIO BOLSONARO': 49.98,
-      'FLAVIO NANTES BOLSONARO': 49.98,
-      'LULA': 41.65,
-      'LUIZ INÁCIO LULA DA SILVA': 41.65
-    }
-  },
-  {
-    urnasPct: 14.50,
-    timestamp: '18:00:15',
-    candidatos: {
-      'FLAVIO BOLSONARO': 50.38,
-      'FLAVIO NANTES BOLSONARO': 50.38,
-      'LULA': 41.38,
-      'LUIZ INÁCIO LULA DA SILVA': 41.38
-    }
-  },
-  {
-    urnasPct: 19.60,
-    timestamp: '18:10:04',
-    candidatos: {
-      'FLAVIO BOLSONARO': 50.72,
-      'FLAVIO NANTES BOLSONARO': 50.72,
-      'LULA': 41.18,
-      'LUIZ INÁCIO LULA DA SILVA': 41.18
-    }
-  },
-  {
-    urnasPct: 24.80,
-    timestamp: '18:15:00',
-    candidatos: {
-      'FLAVIO BOLSONARO': 50.90,
-      'FLAVIO NANTES BOLSONARO': 50.90,
-      'LULA': 41.00,
-      'LUIZ INÁCIO LULA DA SILVA': 41.00
-    }
-  },
-  {
-    urnasPct: 27.88,
-    timestamp: '18:26:58',
-    candidatos: {
-      'FLAVIO BOLSONARO': 50.85,
-      'FLAVIO NANTES BOLSONARO': 50.85,
-      'LULA': 41.05,
-      'LUIZ INÁCIO LULA DA SILVA': 41.05
-    }
-  },
-  {
-    urnasPct: 31.90,
-    timestamp: '18:32:24',
-    candidatos: {
-      'FLAVIO BOLSONARO': 50.74,
-      'FLAVIO NANTES BOLSONARO': 50.74,
-      'LULA': 41.14,
-      'LUIZ INÁCIO LULA DA SILVA': 41.14
-    }
-  },
-  {
-    urnasPct: 36.60,
-    timestamp: '18:37:14',
-    candidatos: {
-      'FLAVIO BOLSONARO': 50.63,
-      'FLAVIO NANTES BOLSONARO': 50.63,
-      'LULA': 41.23,
-      'LUIZ INÁCIO LULA DA SILVA': 41.23,
-      'RONALDO CAIADO': 2.39
-    }
-  }
-];
+// Buffer histórico em memória para traçar a evolução real das urnas do 2º Turno de 2026 ao longo do tempo
+// Inicia limpo para o 2º Turno (sem pontos do 1º turno)
+const historicalTimeline2026: TimelinePoint2026[] = [];
 
 function recordTimelinePoint(urnasPct: number, timestamp: string, candidatos: CandidateResult[]): TimelinePoint2026[] {
   if (urnasPct > 0 && candidatos.length > 0) {
@@ -197,47 +107,43 @@ function recordTimelinePoint(urnasPct: number, timestamp: string, candidatos: Ca
 }
 
 /**
- * Gera um estado de simulação realista para testes antes da abertura das urnas às 17h,
- * permitindo também simular qualquer candidato ou ultrapassagem via parâmetros de URL.
+ * Gera um estado de simulação realista de 2º Turno (apenas os 2 finalistas somando 100% dos votos válidos),
+ * permitindo também simular qualquer percentual ou ultrapassagem via parâmetros de URL (?demo=true&pct1=50.8&pct2=49.2).
  */
 function generateDemoState2026(searchParams?: URLSearchParams): ElectionState {
   const now = new Date();
   const timeStr = '18:48:00';
 
-  // Simulação de apuração realista em 64.80%
-  const totalSecoes = 492000;
-  const pct = 64.80;
+  // Simulação de apuração realista de 2º Turno em 64.80%
+  const totalSecoes = 499248;
+  const pct = parseSafeFloat(searchParams?.get('urnas'), 64.80);
   const secoesApuradas = Math.round((pct / 100) * totalSecoes);
-  const totalVotosValidos = 78540200;
+  const totalVotosValidos = Math.round((pct / 100) * 120000000);
 
-  // Candidatos configuráveis via URL para testes dinâmicos com sanitização
+  // Candidatos configuráveis via URL para testes dinâmicos de 2º turno
   const cand1Nome = (searchParams?.get('cand1') || 'LULA').slice(0, 40);
   const cand1Partido = (searchParams?.get('partido1') || 'PT').slice(0, 15);
-  const cand1Pct = parseSafeFloat(searchParams?.get('pct1'), 47.85);
+  const hasCustomPct1 = searchParams?.has('pct1');
+  const hasCustomPct2 = searchParams?.has('pct2');
+
+  let cand1Pct = parseSafeFloat(searchParams?.get('pct1'), 50.45);
+  let cand2Pct = parseSafeFloat(searchParams?.get('pct2'), Number((100 - cand1Pct).toFixed(2)));
+
+  if (!hasCustomPct1 && hasCustomPct2) {
+    cand1Pct = Number(Math.max(0, 100 - cand2Pct).toFixed(2));
+  } else if (!hasCustomPct2) {
+    cand2Pct = Number(Math.max(0, 100 - cand1Pct).toFixed(2));
+  }
 
   const cand2Nome = (searchParams?.get('cand2') || 'FLÁVIO BOLSONARO').slice(0, 40);
   const cand2Partido = (searchParams?.get('partido2') || 'PL').slice(0, 15);
-  const cand2Pct = parseSafeFloat(searchParams?.get('pct2'), 44.10);
-
-  const cand3Nome = (searchParams?.get('cand3') || 'RONALDO CAIADO').slice(0, 40);
-  const cand3Partido = (searchParams?.get('partido3') || 'UNIÃO').slice(0, 15);
-  const cand3Pct = parseSafeFloat(searchParams?.get('pct3'), 4.80);
-
-  const cand4Nome = (searchParams?.get('cand4') || 'ROMEU ZEMA').slice(0, 40);
-  const cand4Partido = (searchParams?.get('partido4') || 'NOVO').slice(0, 15);
-  const cand4Pct = parseSafeFloat(searchParams?.get('pct4'), 2.25);
-
-  const candOutrosPct = Math.max(0, Number((100 - (cand1Pct + cand2Pct + cand3Pct + cand4Pct)).toFixed(2)));
 
   const cand1Votes = Math.round(totalVotosValidos * (cand1Pct / 100));
-  const cand2Votes = Math.round(totalVotosValidos * (cand2Pct / 100));
-  const cand3Votes = Math.round(totalVotosValidos * (cand3Pct / 100));
-  const cand4Votes = Math.round(totalVotosValidos * (cand4Pct / 100));
-  const candOutrosVotes = totalVotosValidos - (cand1Votes + cand2Votes + cand3Votes + cand4Votes);
+  const cand2Votes = Math.max(0, totalVotosValidos - cand1Votes);
 
   const rawCandidatos: CandidateResult[] = [
     {
-      id: 'cand-1',
+      id: 'cand-13',
       nome: cand1Nome,
       numero: '13',
       partido: cand1Partido,
@@ -247,7 +153,7 @@ function generateDemoState2026(searchParams?: URLSearchParams): ElectionState {
       cor: ''
     },
     {
-      id: 'cand-2',
+      id: 'cand-22',
       nome: cand2Nome,
       numero: '22',
       partido: cand2Partido,
@@ -255,36 +161,6 @@ function generateDemoState2026(searchParams?: URLSearchParams): ElectionState {
       percentual: cand2Pct,
       posicao: 2,
       cor: ''
-    },
-    {
-      id: 'cand-3',
-      nome: cand3Nome,
-      numero: '44',
-      partido: cand3Partido,
-      votos: cand3Votes,
-      percentual: cand3Pct,
-      posicao: 3,
-      cor: ''
-    },
-    {
-      id: 'cand-4',
-      nome: cand4Nome,
-      numero: '30',
-      partido: cand4Partido,
-      votos: cand4Votes,
-      percentual: cand4Pct,
-      posicao: 4,
-      cor: ''
-    },
-    {
-      id: 'cand-5',
-      nome: 'OUTROS CANDIDATOS',
-      numero: '--',
-      partido: 'DIVERSOS',
-      votos: candOutrosVotes,
-      percentual: candOutrosPct,
-      posicao: 5,
-      cor: '#52525B'
     }
   ];
 
@@ -294,10 +170,13 @@ function generateDemoState2026(searchParams?: URLSearchParams): ElectionState {
   });
 
   // Garantir ordenação estritamente dinâmica por votos/percentual
-  rawCandidatos.sort((a, b) => b.percentual - a.percentual);
+  rawCandidatos.sort((a, b) => (b.percentual - a.percentual) || (b.votos - a.votos) || (a.posicao - b.posicao));
   rawCandidatos.forEach((c, idx) => {
     c.posicao = idx + 1;
   });
+
+  const c1Key = cand1Nome.toUpperCase().trim();
+  const c2Key = cand2Nome.toUpperCase().trim();
 
   return {
     ano: 2026,
@@ -307,16 +186,22 @@ function generateDemoState2026(searchParams?: URLSearchParams): ElectionState {
     totalSecoes,
     secoesApuradas,
     totalVotosValidos,
+    votosBrancos: Math.round(totalVotosValidos * 0.0145),
+    votosBrancosPct: 1.38,
+    votosNulos: Math.round(totalVotosValidos * 0.0312),
+    votosNulosPct: 2.96,
+    abstencao: Math.round(158745502 * (pct / 100) * 0.2045),
+    abstencaoPct: 20.45,
     candidatos: rawCandidatos,
     status: 'em_andamento',
     origem: 'tse-demo',
-    mensagemStatus: 'MODO DEMONSTRAÇÃO (simulando 64.8% para testes antes das 17h)',
+    mensagemStatus: `MODO DEMONSTRAÇÃO 2º TURNO (simulando ${pct.toFixed(1)}% das urnas)`,
     timeline2026: [
-      { urnasPct: 5.0, timestamp: '17:15', candidatos: { [cand1Nome.toUpperCase()]: 44.2, [cand2Nome.toUpperCase()]: 46.5 } },
-      { urnasPct: 18.0, timestamp: '17:35', candidatos: { [cand1Nome.toUpperCase()]: 45.8, [cand2Nome.toUpperCase()]: 45.2 } },
-      { urnasPct: 35.0, timestamp: '18:00', candidatos: { [cand1Nome.toUpperCase()]: 46.5, [cand2Nome.toUpperCase()]: 44.8 } },
-      { urnasPct: 50.0, timestamp: '18:25', candidatos: { [cand1Nome.toUpperCase()]: 47.2, [cand2Nome.toUpperCase()]: 44.4 } },
-      { urnasPct: pct, timestamp: timeStr, candidatos: { [cand1Nome.toUpperCase()]: cand1Pct, [cand2Nome.toUpperCase()]: cand2Pct } }
+      { urnasPct: 5.0, timestamp: '17:15', candidatos: { [c1Key]: 45.80, [c2Key]: 54.20 } },
+      { urnasPct: 18.0, timestamp: '17:35', candidatos: { [c1Key]: 47.40, [c2Key]: 52.60 } },
+      { urnasPct: 35.0, timestamp: '18:00', candidatos: { [c1Key]: 48.75, [c2Key]: 51.25 } },
+      { urnasPct: 50.0, timestamp: '18:25', candidatos: { [c1Key]: 49.65, [c2Key]: 50.35 } },
+      { urnasPct: pct, timestamp: timeStr, candidatos: { [c1Key]: cand1Pct, [c2Key]: cand2Pct } }
     ]
   };
 }
@@ -372,7 +257,7 @@ export async function GET(request: NextRequest) {
           signal: controller.signal,
           headers: {
             'Accept': 'application/json, text/plain, */*',
-            'User-Agent': 'LadoALado-Eleicoes/1.0 (Jornalismo de Dados)'
+            'User-Agent': 'LadoALado-Eleicoes/2.0 (Jornalismo de Dados)'
           },
           next: { revalidate: 5 } // SWR 5s na borda para apuração ultrarrápida
         });
@@ -420,6 +305,12 @@ export async function GET(request: NextRequest) {
     let totalSecoes = 0;
     let secoesApuradas = 0;
     let totalVotosValidos = 0;
+    let votosBrancos: number | undefined;
+    let votosBrancosPct: number | undefined;
+    let votosNulos: number | undefined;
+    let votosNulosPct: number | undefined;
+    let abstencao: number | undefined;
+    let abstencaoPct: number | undefined;
     const candidatos: CandidateResult[] = [];
 
     if (tseData.s && typeof tseData.s === 'object') {
@@ -431,6 +322,14 @@ export async function GET(request: NextRequest) {
 
       const vObj = (tseData.v || {}) as Record<string, string>;
       totalVotosValidos = parseTSEInt(vObj.vv || vObj.tv);
+      if (vObj.vb !== undefined) votosBrancos = parseTSEInt(vObj.vb);
+      if (vObj.pvb !== undefined) votosBrancosPct = parseTSEFloat(vObj.pvb);
+      if (vObj.tvn !== undefined || vObj.vn !== undefined) votosNulos = parseTSEInt(vObj.tvn || vObj.vn);
+      if (vObj.ptvn !== undefined || vObj.pvn !== undefined) votosNulosPct = parseTSEFloat(vObj.ptvn || vObj.pvn);
+
+      const eObj = (tseData.e || {}) as Record<string, string>;
+      if (eObj.a !== undefined) abstencao = parseTSEInt(eObj.a);
+      if (eObj.pa !== undefined) abstencaoPct = parseTSEFloat(eObj.pa);
 
       if (Array.isArray(tseData.carg) && tseData.carg[0]?.agr) {
         tseData.carg[0].agr.forEach((a: TSEColigacaoNode) => {
@@ -475,8 +374,8 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Ordenar por percentual estritamente decrescente e atualizar posições dinamicamente
-    candidatos.sort((a, b) => b.percentual - a.percentual);
+    // Ordenar por percentual/votos estritamente decrescente, mantendo ordem oficial (seq) em caso de 0%
+    candidatos.sort((a, b) => (b.percentual - a.percentual) || (b.votos - a.votos) || (a.posicao - b.posicao));
     candidatos.forEach((c, idx) => {
       c.posicao = idx + 1;
     });
@@ -491,6 +390,12 @@ export async function GET(request: NextRequest) {
       totalSecoes,
       secoesApuradas,
       totalVotosValidos,
+      votosBrancos,
+      votosBrancosPct,
+      votosNulos,
+      votosNulosPct,
+      abstencao,
+      abstencaoPct,
       candidatos,
       status: secoesTotalizadasPct >= 99.9 ? 'finalizada' : secoesTotalizadasPct > 0 ? 'em_andamento' : 'aguardando',
       origem: 'tse-live',
@@ -507,7 +412,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('[TSE API] Erro ao consultar CDN oficial:', error);
     // Em caso de falha de rede/timeout, retornar fallback demo para não quebrar a UI
-    return NextResponse.json(generateDemoState2026(), {
+    return NextResponse.json(generateDemoState2026(searchParams), {
       status: 200,
       headers: {
         'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=30',

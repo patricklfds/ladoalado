@@ -15,6 +15,8 @@ import {
 } from '@/lib/comparator';
 
 const POLLING_INTERVAL_SECONDS = 20;
+const STORAGE_KEY_2026_2T = 'ladoalado_timeline_2026_2t';
+const LEGACY_STORAGE_KEY_1T = 'ladoalado_timeline_2026';
 
 export function useElectionData() {
   const [modo, setModo] = useState<ComparisonMode>('urnas');
@@ -22,7 +24,9 @@ export function useElectionData() {
   const [timeline2026, setTimeline2026] = useState<TimelinePoint2026[]>(() => {
     if (typeof window !== 'undefined') {
       try {
-        const saved = localStorage.getItem('ladoalado_timeline_2026');
+        // Limpar cache legado do 1º turno para garantir isolamento total no 2º turno
+        localStorage.removeItem(LEGACY_STORAGE_KEY_1T);
+        const saved = localStorage.getItem(STORAGE_KEY_2026_2T);
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length > 0) {
@@ -46,11 +50,11 @@ export function useElectionData() {
   const abortControllerRef = useRef<AbortController | null>(null);
   const hasLoadedRef = useRef<boolean>(false);
 
-  // 1. Carregar o arquivo estático de 2022 na inicialização
+  // 1. Carregar o arquivo estático de 2022 (2º Turno) na inicialização
   useEffect(() => {
     async function load2022() {
       try {
-        const res = await fetch('/data/2022-timeline.json');
+        const res = await fetch('/data/2022-timeline.json?v=2t');
         if (!res.ok) throw new Error('Falha ao carregar timeline 2022');
         const data: TimelinePoint2022[] = await res.json();
         setTimeline2022(data);
@@ -79,9 +83,9 @@ export function useElectionData() {
     const minDelayPromise = new Promise(resolve => setTimeout(resolve, 400));
 
     try {
-      // Passar timestamp para garantir que cliques no botão de refresh bypassam qualquer cache
-      const isDemoUrl = typeof window !== 'undefined' && window.location.search.includes('demo=true');
-      const baseApiUrl = isDemoUrl ? '/api/tse?demo=true' : '/api/tse';
+      // Passar query string atual (ex: ?demo=true&pct1=51) e timestamp para bypassar qualquer cache
+      const currentSearch = typeof window !== 'undefined' ? window.location.search : '';
+      const baseApiUrl = currentSearch ? `/api/tse${currentSearch}` : '/api/tse';
       const sep = baseApiUrl.includes('?') ? '&' : '?';
       const url = `${baseApiUrl}${sep}_t=${Date.now()}`;
 
@@ -147,7 +151,9 @@ export function useElectionData() {
         });
         const merged = Array.from(pointMap.values()).sort((a, b) => a.urnasPct - b.urnasPct);
         try {
-          localStorage.setItem('ladoalado_timeline_2026', JSON.stringify(merged));
+          if (!data.origem.includes('demo')) {
+            localStorage.setItem(STORAGE_KEY_2026_2T, JSON.stringify(merged));
+          }
         } catch {
           // ignore
         }

@@ -49,6 +49,12 @@ export interface ElectionState {
   totalSecoes: number;
   secoesApuradas: number;
   totalVotosValidos: number;
+  votosBrancos?: number;
+  votosBrancosPct?: number;
+  votosNulos?: number;
+  votosNulosPct?: number;
+  abstencao?: number;
+  abstencaoPct?: number;
   candidatos: CandidateResult[];
   status: ElectionStatus;
   origem: 'tse-live' | 'tse-demo' | 'historico-2022';

@@ -109,24 +109,29 @@ export function TrajectoryChart({
     pointsToDraw.sort((a, b) => a.urnasPct - b.urnasPct);
   }
 
-  // Considerar estritamente os candidatos da disputa (1º, 2º e marco de 50%)
+  // Traçado 2022 (Referência histórica suavizada do 2º turno de 2022)
+  const sample2022 = timeline2022.filter((p, i) => i === 0 || i % 3 === 0 || i === timeline2022.length - 1);
+
+  // Considerar estritamente os candidatos da disputa (2026 + referência 2022 + marco central de 50%)
   const candValues1 = pointsToDraw.map(p => findCandidatePct(cand1, p.candidatos)).filter((v): v is number => v !== null);
   const candValues2 = pointsToDraw.map(p => findCandidatePct(cand2, p.candidatos)).filter((v): v is number => v !== null);
+  const ref2022Values = sample2022
+    .filter(p => p.secoesTotalizadasPct > 0)
+    .flatMap(p => [p.lulaPct, p.bolsonaroPct]);
 
   const relevantValues: number[] = [
-    cand1Pct,
-    cand2Pct,
+    ...(currentPct2026 > 0 ? [cand1Pct, cand2Pct] : []),
     50,
     ...candValues1,
-    ...candValues2
+    ...candValues2,
+    ...ref2022Values
   ].filter(v => typeof v === 'number' && !isNaN(v) && v > 0);
 
-  const rawMin = Math.min(...relevantValues);
-  const rawMax = Math.max(...relevantValues);
-
-  // Escala focada na zona de disputa presidencial (mantendo 50% e os concorrentes com excelente respiro vertical)
-  const yMin = Math.max(0, Math.min(36, Math.floor(rawMin - 3)));
-  const yMax = Math.min(100, Math.max(54, Math.ceil(rawMax + 2)));
+  // Escala simétrica em torno de 50% (ponto exato de virada no 2º turno), garantindo que 2022 e 2026 nunca sejam cortados
+  const maxDeviation = Math.max(8, ...relevantValues.map(v => Math.abs(v - 50)));
+  const halfSpan = Math.min(50, Math.max(10, Math.ceil(maxDeviation + 2)));
+  const yMin = 50 - halfSpan;
+  const yMax = 50 + halfSpan;
 
   const scaleX = (urnasPct: number) => padding.left + (Math.max(0, Math.min(100, urnasPct)) / 100) * plotW;
   const scaleY = (votosPct: number) => {
@@ -134,7 +139,7 @@ export function TrajectoryChart({
     return padding.top + plotH - ((clamped - yMin) / (yMax - yMin)) * plotH;
   };
 
-  // Marcadores do Eixo Y (múltiplos de 5 entre yMin e yMax, incluindo 50%)
+  // Marcadores do Eixo Y (múltiplos de 5 entre yMin e yMax, com 50% sempre no centro)
   const yTicks: number[] = [];
   for (let val = Math.ceil(yMin / 5) * 5; val <= Math.floor(yMax / 5) * 5; val += 5) {
     yTicks.push(val);
@@ -143,9 +148,6 @@ export function TrajectoryChart({
     yTicks.push(50);
     yTicks.sort((a, b) => a - b);
   }
-
-  // Traçado 2022 (Referência histórica suavizada dos 2 primeiros de 2022)
-  const sample2022 = timeline2022.filter((p, i) => i === 0 || i % 4 === 0 || i === timeline2022.length - 1);
 
   const ptsLula2022 = sample2022
     .filter(p => p.secoesTotalizadasPct > 0)
@@ -179,6 +181,23 @@ export function TrajectoryChart({
   const pathCand22026 = smoothSvgPath(pointsCand2, 0.75);
 
   const currentX = scaleX(currentPct2026);
+
+  // Anti-colisão vertical dos rótulos na ponta direita quando os candidatos estão próximos (ex: cruzamento em 50%)
+  const rawY1 = scaleY(cand1Pct);
+  const rawY2 = scaleY(cand2Pct);
+  const minLabelGap = 13;
+  let labelY1 = rawY1;
+  let labelY2 = rawY2;
+  if (Math.abs(rawY2 - rawY1) < minLabelGap) {
+    const midY = (rawY1 + rawY2) / 2;
+    if (rawY1 <= rawY2) {
+      labelY1 = midY - minLabelGap / 2;
+      labelY2 = midY + minLabelGap / 2;
+    } else {
+      labelY1 = midY + minLabelGap / 2;
+      labelY2 = midY - minLabelGap / 2;
+    }
+  }
 
   return (
     <section className="py-8 sm:py-10 border-b border-[var(--border)]">
@@ -347,13 +366,13 @@ export function TrajectoryChart({
               {/* Ponto Candidato 1 2026 */}
               <circle
                 cx={currentX}
-                cy={scaleY(cand1Pct)}
+                cy={rawY1}
                 r="3.5"
                 fill={cand1Cor}
               />
               <text
                 x={currentX + 6}
-                y={scaleY(cand1Pct) + 3}
+                y={labelY1 + 3}
                 fill={cand1Cor}
                 className="text-[10px] font-mono font-medium"
               >
@@ -363,13 +382,13 @@ export function TrajectoryChart({
               {/* Ponto Candidato 2 2026 */}
               <circle
                 cx={currentX}
-                cy={scaleY(cand2Pct)}
+                cy={rawY2}
                 r="3.5"
                 fill={cand2Cor}
               />
               <text
                 x={currentX + 6}
-                y={scaleY(cand2Pct) + 3}
+                y={labelY2 + 3}
                 fill={cand2Cor}
                 className="text-[10px] font-mono font-medium"
               >
