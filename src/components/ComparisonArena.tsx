@@ -288,57 +288,64 @@ export function ComparisonArena({
         </div>
       </div>
 
-      {/* Faixa Discreta Ao Vivo: Probabilidades no Polymarket */}
+      {/* Card Editorial Compacto: Mercado Preditivo Ao Vivo (Polymarket) */}
       {polymarket && (
-        <div className="mt-7 pt-3.5 border-t border-[var(--border)] flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-[var(--fg-subtle)]">
-          <div className="flex items-center gap-2">
-            <a
-              href={polymarket.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors underline decoration-[var(--border)] underline-offset-2"
-            >
-              Polymarket
-            </a>
-            <span>·</span>
-            <span>probabilidades em tempo real</span>
+        <div className="mt-8 rounded border border-[var(--border)] bg-[var(--surface)] px-4 py-3.5">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+            <div className="flex items-center gap-2 text-xs">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+              <a
+                href={polymarket.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-[var(--fg)] hover:opacity-80 transition-opacity inline-flex items-center gap-1"
+              >
+                <span>Polymarket</span>
+                <span className="text-[10px] text-[var(--fg-subtle)] font-mono">↗</span>
+              </a>
+              <span className="text-[var(--fg-subtle)]">·</span>
+              <span className="text-[var(--fg-muted)]">Probabilidade de vitória em tempo real</span>
+            </div>
+
             {polymarket.volumeUsd && polymarket.volumeUsd > 0 && (
-              <span className="hidden sm:inline text-[var(--fg-subtle)]">
-                (vol. US$ {(polymarket.volumeUsd / 1_000_000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M)
+              <span className="text-[11px] font-mono text-[var(--fg-subtle)] tabular-nums">
+                US$ {(polymarket.volumeUsd / 1_000_000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M negociados
               </span>
             )}
           </div>
 
-          <div className="flex items-center gap-3 tabular-nums">
-            {polymarket.bolsonaroPct >= polymarket.lulaPct ? (
-              <>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--color-pl)' }} />
-                  <span className="text-[var(--fg-muted)]">Flávio Bolsonaro</span>
-                  <strong className="text-[var(--fg)] font-medium">{polymarket.bolsonaroPct.toFixed(1)}%</strong>
-                </span>
-                <span className="text-[var(--border)]">·</span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--color-pt)' }} />
-                  <span className="text-[var(--fg-muted)]">Lula</span>
-                  <strong className="text-[var(--fg)] font-medium">{polymarket.lulaPct.toFixed(1)}%</strong>
-                </span>
-              </>
-            ) : (
-              <>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--color-pt)' }} />
-                  <span className="text-[var(--fg-muted)]">Lula</span>
-                  <strong className="text-[var(--fg)] font-medium">{polymarket.lulaPct.toFixed(1)}%</strong>
-                </span>
-                <span className="text-[var(--border)]">·</span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--color-pl)' }} />
-                  <span className="text-[var(--fg-muted)]">Flávio Bolsonaro</span>
-                  <strong className="text-[var(--fg)] font-medium">{polymarket.bolsonaroPct.toFixed(1)}%</strong>
-                </span>
-              </>
-            )}
+          {/* Placar Cabo de Guerra (Lula vs Flávio Bolsonaro) */}
+          <div className="flex items-baseline justify-between gap-4 font-mono text-xs mb-1.5 tabular-nums">
+            <div className="flex items-baseline gap-2">
+              <span className="font-sans font-medium text-[var(--fg)]">Lula</span>
+              <span className="text-sm font-semibold" style={{ color: 'var(--color-pt)' }}>
+                {polymarket.lulaPct.toFixed(1)}%
+              </span>
+            </div>
+
+            <div className="flex items-baseline gap-2">
+              <span className="text-sm font-semibold" style={{ color: 'var(--color-pl)' }}>
+                {polymarket.bolsonaroPct.toFixed(1)}%
+              </span>
+              <span className="font-sans font-medium text-[var(--fg)]">Flávio Bolsonaro</span>
+            </div>
+          </div>
+
+          {/* Barra Proporcional Dupla (Tug-of-War) */}
+          <div className="w-full h-1.5 rounded-full overflow-hidden flex gap-[2px] bg-neutral-200 dark:bg-neutral-800">
+            <div
+              className="h-full transition-all duration-500 ease-out"
+              style={{
+                width: `${Math.max(2, Math.min(98, polymarket.lulaPct))}%`,
+                backgroundColor: 'var(--color-pt)'
+              }}
+            />
+            <div
+              className="h-full transition-all duration-500 ease-out flex-1"
+              style={{
+                backgroundColor: 'var(--color-pl)'
+              }}
+            />
           </div>
         </div>
       )}

@@ -896,12 +896,13 @@ function generateDemoState2026(searchParams?: URLSearchParams): ElectionState {
   const c1Key = cand1Nome.toUpperCase().trim();
   const c2Key = cand2Nome.toUpperCase().trim();
 
-  const demoUFs: UFResult[] = UF_LIST.map(meta => {
+  const demoUFs: UFResult[] = UF_LIST.map((meta, idx) => {
     const ufPct = Number(Math.min(100, Math.max(0, pct * meta.demoProgressBias)).toFixed(2));
     const ufSecoesApuradas = Math.round((ufPct / 100) * meta.defaultSecoes);
     const ufVotosValidos = Math.round(120000000 * (meta.demoWeight / 100) * (ufPct / 100));
     const shift = cand1Pct - 50.45;
-    const lulaPct = Number(Math.min(95, Math.max(5, meta.demoLulaShare + shift)).toFixed(2));
+    const stateVariation = ((idx % 5) - 2) * 0.45;
+    const lulaPct = Number(Math.min(95, Math.max(5, meta.demoLulaShare + shift + stateVariation)).toFixed(2));
     const bolsonaroPct = Number((100 - lulaPct).toFixed(2));
     const lulaVotos = Math.round(ufVotosValidos * (lulaPct / 100));
     const bolsonaroVotos = Math.max(0, ufVotosValidos - lulaVotos);

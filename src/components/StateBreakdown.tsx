@@ -5,9 +5,6 @@ import type { UFResult, MacroRegiao } from '@/lib/types';
 
 interface StateBreakdownProps {
   ufs?: UFResult[];
-  secoesAdiantadasUF?: number;
-  votosAdiantadosUF?: number;
-  origem?: string;
 }
 
 type SortMode = 'volume' | 'faltam' | 'apurado';
@@ -21,12 +18,49 @@ const REGIOES_ORDER: MacroRegiao[] = [
   'Exterior'
 ];
 
-export function StateBreakdown({
-  ufs,
-  secoesAdiantadasUF = 0,
-  votosAdiantadosUF = 0,
-  origem
-}: StateBreakdownProps) {
+// Resultado oficial do 2º Turno de 2022 (TSE Pleito 545 - 30/10/2022) por Macro-Região
+const REGIAO_2022_BASELINE: Record<MacroRegiao, { lula2022: number; bolso2022: number }> = {
+  'Sudeste': { lula2022: 45.74, bolso2022: 54.26 },
+  'Nordeste': { lula2022: 69.34, bolso2022: 30.66 },
+  'Sul': { lula2022: 38.16, bolso2022: 61.84 },
+  'Norte': { lula2022: 49.00, bolso2022: 51.00 },
+  'Centro-Oeste': { lula2022: 39.79, bolso2022: 60.21 },
+  'Exterior': { lula2022: 51.28, bolso2022: 48.72 }
+};
+
+// Resultado oficial do 2º Turno de 2022 (TSE Pleito 545 - 30/10/2022) por UF
+const UF_2022_BASELINE: Record<string, { lula2022: number; bolso2022: number }> = {
+  SP: { lula2022: 44.76, bolso2022: 55.24 },
+  MG: { lula2022: 50.20, bolso2022: 49.80 },
+  RJ: { lula2022: 43.47, bolso2022: 56.53 },
+  BA: { lula2022: 72.12, bolso2022: 27.88 },
+  RS: { lula2022: 43.65, bolso2022: 56.35 },
+  PR: { lula2022: 37.60, bolso2022: 62.40 },
+  CE: { lula2022: 69.97, bolso2022: 30.03 },
+  PE: { lula2022: 66.93, bolso2022: 33.07 },
+  PA: { lula2022: 54.75, bolso2022: 45.25 },
+  SC: { lula2022: 30.73, bolso2022: 69.27 },
+  MA: { lula2022: 71.14, bolso2022: 28.86 },
+  GO: { lula2022: 41.29, bolso2022: 58.71 },
+  PB: { lula2022: 66.62, bolso2022: 33.38 },
+  ES: { lula2022: 41.96, bolso2022: 58.04 },
+  PI: { lula2022: 76.86, bolso2022: 23.14 },
+  MT: { lula2022: 34.92, bolso2022: 65.08 },
+  RN: { lula2022: 65.10, bolso2022: 34.90 },
+  AM: { lula2022: 51.10, bolso2022: 48.90 },
+  MS: { lula2022: 40.51, bolso2022: 59.49 },
+  AL: { lula2022: 58.68, bolso2022: 41.32 },
+  DF: { lula2022: 41.19, bolso2022: 58.81 },
+  SE: { lula2022: 67.21, bolso2022: 32.79 },
+  RO: { lula2022: 29.34, bolso2022: 70.66 },
+  TO: { lula2022: 51.36, bolso2022: 48.64 },
+  AC: { lula2022: 29.70, bolso2022: 70.30 },
+  AP: { lula2022: 48.64, bolso2022: 51.36 },
+  RR: { lula2022: 23.92, bolso2022: 76.08 },
+  ZZ: { lula2022: 51.28, bolso2022: 48.72 }
+};
+
+export function StateBreakdown({ ufs }: StateBreakdownProps) {
   const [sortMode, setSortMode] = useState<SortMode>('volume');
   const [showAllUFs, setShowAllUFs] = useState<boolean>(false);
 
@@ -48,6 +82,9 @@ export function StateBreakdown({
       const bolsonaroPct =
         totalVotosValidos > 0 ? Number(Math.max(0, 100 - lulaPct).toFixed(2)) : 0;
 
+      const base2022 = REGIAO_2022_BASELINE[regiao];
+      const deltaLula = Number((lulaPct - base2022.lula2022).toFixed(1));
+
       return {
         regiao,
         totalSecoes,
@@ -58,7 +95,10 @@ export function StateBreakdown({
         lulaPct,
         lulaVotos,
         bolsonaroPct,
-        bolsonaroVotos
+        bolsonaroVotos,
+        lula2022: base2022.lula2022,
+        bolso2022: base2022.bolso2022,
+        deltaLula
       };
     });
   }, [ufs]);
@@ -82,25 +122,14 @@ export function StateBreakdown({
 
   return (
     <section className="py-8 sm:py-10 border-b border-[var(--border)]">
-      {/* Cabeçalho Editorial da Seção Multi-UF */}
+      {/* Cabeçalho Editorial da Seção Regional */}
       <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 mb-6">
         <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-semibold text-lg tracking-tight text-[var(--fg)]">
-              Apuração Direta por Região e Estado
-            </h3>
-            <span className="text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded border border-[var(--border)] text-[var(--fg-muted)]">
-              27 UFs + Exterior
-            </span>
-            {secoesAdiantadasUF > 0 && (
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium tabular-nums">
-                +{secoesAdiantadasUF.toLocaleString('pt-BR')} urnas à frente do consolidado nacional
-                {votosAdiantadosUF > 0 ? ` (+${votosAdiantadosUF.toLocaleString('pt-BR')} votos)` : ''}
-              </span>
-            )}
-          </div>
-          <p className="text-xs text-[var(--fg-muted)] mt-0.5">
-            Leitura direta dos arquivos regionais de cada TRE no CDN do TSE ({origem === 'tse-uf-turbo' ? 'soma direta Multi-UF ativa' : 'sincronizado'})
+          <h3 className="font-semibold text-lg tracking-tight text-[var(--fg)]">
+            Apuração por Região e Estado
+          </h3>
+          <p className="text-xs text-[var(--fg-muted)]">
+            Desempenho regional em 2026 comparado ao resultado oficial do 2º turno de 2022
           </p>
         </div>
 
@@ -149,97 +178,186 @@ export function StateBreakdown({
         </div>
       </div>
 
-      {/* 1. Resumo das Macro-Regiões (Onde estão e onde faltam os votos) */}
+      {/* 1. Cards das 6 Macro-Regiões (Layout Cabo de Guerra sem quebra de linha + Comparação 2022) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-        {regioesSummary.map(r => (
-          <div
-            key={r.regiao}
-            className="p-3.5 rounded border border-[var(--border)] bg-[var(--surface)] space-y-2"
-          >
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="font-semibold text-sm text-[var(--fg)]">{r.regiao}</span>
-              <span className="font-mono text-xs tabular-nums text-[var(--fg)] font-medium">
-                {r.secoesPct.toFixed(2)}% <span className="text-[var(--fg-subtle)] font-normal">apurado</span>
-              </span>
-            </div>
+        {regioesSummary.map(r => {
+          const hasVotes = r.totalVotosValidos > 0;
+          const displayLulaPct = hasVotes ? r.lulaPct : r.lula2022;
 
-            {/* Barra de divisão regional Lula vs Bolsonaro */}
-            <div className="w-full h-[3px] bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden flex">
-              {r.totalVotosValidos > 0 ? (
-                <>
-                  <div
-                    className="h-full transition-all duration-500"
-                    style={{ width: `${r.lulaPct}%`, backgroundColor: 'var(--color-pt)' }}
-                  />
-                  <div
-                    className="h-full transition-all duration-500"
-                    style={{ width: `${r.bolsonaroPct}%`, backgroundColor: 'var(--color-pl)' }}
-                  />
-                </>
-              ) : (
-                <div
-                  className="h-full bg-[var(--fg-subtle)] opacity-30"
-                  style={{ width: `${r.secoesPct}%` }}
-                />
-              )}
-            </div>
-
-            <div className="flex items-center justify-between text-[11px] font-mono tabular-nums">
-              {r.totalVotosValidos > 0 ? (
-                <span className="text-[var(--fg-muted)]">
-                  <strong style={{ color: 'var(--color-pt)' }}>Lula {r.lulaPct.toFixed(1)}%</strong>
-                  {' · '}
-                  <strong style={{ color: 'var(--color-pl)' }}>Flávio {r.bolsonaroPct.toFixed(1)}%</strong>
-                </span>
-              ) : (
-                <span className="text-[var(--fg-subtle)]">Aguardando boletins</span>
-              )}
-              <span className="text-[var(--fg-subtle)]">
-                {r.secoesRestantes > 0
-                  ? `faltam ${r.secoesRestantes.toLocaleString('pt-BR')} seções`
-                  : '100% totalizado'}
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* 2. Grid Compacto das 28 UFs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-3 font-mono text-xs">
-        {visibleUFs.map(u => {
-          const restantes = Math.max(0, u.totalSecoes - u.secoesApuradas);
-          const hasVotes = u.totalVotosValidos > 0;
           return (
             <div
-              key={u.uf}
-              className="py-2 border-b border-[var(--border)] flex flex-col justify-between gap-1"
+              key={r.regiao}
+              className="p-4 rounded border border-[var(--border)] bg-[var(--surface)] flex flex-col justify-between gap-2.5"
             >
+              {/* Linha 1: Nome da Região + % Apurado */}
               <div className="flex items-baseline justify-between gap-2">
-                <div className="flex items-baseline gap-1.5 truncate">
-                  <span className="font-semibold text-[var(--fg)]">{u.uf}</span>
-                  <span className="text-[11px] font-sans text-[var(--fg-muted)] truncate">{u.nome}</span>
-                </div>
-                <span className="tabular-nums text-[11px] text-[var(--fg)] font-medium shrink-0">
-                  {u.secoesTotalizadasPct.toFixed(2)}%
+                <span className="font-semibold text-sm text-[var(--fg)]">{r.regiao}</span>
+                <span className="font-mono text-xs tabular-nums text-[var(--fg-muted)] whitespace-nowrap">
+                  <strong className="text-[var(--fg)] font-medium">{r.secoesPct.toFixed(2)}%</strong> apurado
                 </span>
               </div>
 
-              <div className="flex items-center justify-between text-[10px] tabular-nums text-[var(--fg-subtle)]">
+              {/* Linha 2: Placar 2026 em Linha Dedicada (Zero Transbordamento) */}
+              <div className="flex items-baseline justify-between gap-2 font-mono text-xs tabular-nums">
                 {hasVotes ? (
-                  <span>
-                    <span style={{ color: 'var(--color-pt)' }} className="font-medium">
-                      L {u.lulaPct.toFixed(1)}%
+                  <>
+                    <span className="whitespace-nowrap">
+                      <span className="font-sans text-[var(--fg-muted)]">Lula</span>{' '}
+                      <strong className="font-semibold" style={{ color: 'var(--color-pt)' }}>
+                        {r.lulaPct.toFixed(1)}%
+                      </strong>
                     </span>
-                    {' · '}
+                    <span className="whitespace-nowrap">
+                      <strong className="font-semibold" style={{ color: 'var(--color-pl)' }}>
+                        {r.bolsonaroPct.toFixed(1)}%
+                      </strong>{' '}
+                      <span className="font-sans text-[var(--fg-muted)]">Flávio</span>
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="whitespace-nowrap text-[var(--fg-subtle)]">Lula 0.0%</span>
+                    <span className="whitespace-nowrap text-[var(--fg-subtle)]">0.0% Flávio</span>
+                  </>
+                )}
+              </div>
+
+              {/* Linha 3: Barra Cabo de Guerra Proporcional */}
+              <div className="w-full h-1.5 bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden flex gap-[2px]">
+                <div
+                  className="h-full transition-all duration-500"
+                  style={{
+                    width: `${displayLulaPct}%`,
+                    backgroundColor: 'var(--color-pt)',
+                    opacity: hasVotes ? 1 : 0.3
+                  }}
+                />
+                <div
+                  className="h-full transition-all duration-500 flex-1"
+                  style={{
+                    backgroundColor: 'var(--color-pl)',
+                    opacity: hasVotes ? 1 : 0.3
+                  }}
+                />
+              </div>
+
+              {/* Linha 4: Comparativo 2022 + Variação / Seções */}
+              <div className="pt-0.5 flex items-center justify-between gap-2 text-[11px] font-mono tabular-nums text-[var(--fg-subtle)]">
+                <span className="whitespace-nowrap">
+                  2022: L {r.lula2022.toFixed(1)}% · B {r.bolso2022.toFixed(1)}%
+                </span>
+                {hasVotes ? (
+                  <span
+                    className="whitespace-nowrap font-medium"
+                    style={{
+                      color:
+                        Math.abs(r.deltaLula) < 0.05
+                          ? 'var(--fg-subtle)'
+                          : r.deltaLula > 0
+                          ? 'var(--color-pt)'
+                          : 'var(--color-pl)'
+                    }}
+                  >
+                    {Math.abs(r.deltaLula) < 0.05
+                      ? '= 2022'
+                      : r.deltaLula > 0
+                      ? `+${r.deltaLula.toFixed(1)}% Lula vs 22`
+                      : `+${Math.abs(r.deltaLula).toFixed(1)}% Flávio vs 22`}
+                  </span>
+                ) : (
+                  <span className="whitespace-nowrap">
+                    {r.totalSecoes.toLocaleString('pt-BR')} seções
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* 2. Grid Espaçado das 28 UFs (3 colunas no desktop para leitura limpa + Comparativo 2022) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-3.5 font-mono text-xs">
+        {visibleUFs.map(u => {
+          const hasVotes = u.totalVotosValidos > 0;
+          const base22 = UF_2022_BASELINE[u.uf] || { lula2022: 50, bolso2022: 50 };
+          const deltaLula = Number((u.lulaPct - base22.lula2022).toFixed(1));
+          const barLula = hasVotes ? u.lulaPct : base22.lula2022;
+
+          return (
+            <div
+              key={u.uf}
+              className="py-2.5 border-b border-[var(--border)] flex flex-col justify-between gap-1.5"
+            >
+              {/* Topo: Sigla + Nome do Estado | % Apurado */}
+              <div className="flex items-baseline justify-between gap-2">
+                <div className="flex items-baseline gap-1.5 truncate">
+                  <span className="font-semibold text-[var(--fg)]">{u.uf}</span>
+                  <span className="text-xs font-sans text-[var(--fg-muted)] truncate">{u.nome}</span>
+                </div>
+                <span className="tabular-nums text-[11px] text-[var(--fg-muted)] whitespace-nowrap shrink-0">
+                  <strong className="text-[var(--fg)] font-medium">{u.secoesTotalizadasPct.toFixed(2)}%</strong> apurado
+                </span>
+              </div>
+
+              {/* Barra fina 2px do Estado */}
+              <div className="w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden flex gap-[1px]">
+                <div
+                  className="h-full transition-all duration-500"
+                  style={{
+                    width: `${barLula}%`,
+                    backgroundColor: 'var(--color-pt)',
+                    opacity: hasVotes ? 1 : 0.25
+                  }}
+                />
+                <div
+                  className="h-full transition-all duration-500 flex-1"
+                  style={{
+                    backgroundColor: 'var(--color-pl)',
+                    opacity: hasVotes ? 1 : 0.25
+                  }}
+                />
+              </div>
+
+              {/* Base: Placar 2026 | Referência 2022 */}
+              <div className="flex items-center justify-between gap-2 text-[11px] tabular-nums">
+                {hasVotes ? (
+                  <span className="whitespace-nowrap">
+                    <span style={{ color: 'var(--color-pt)' }} className="font-medium">
+                      Lula {u.lulaPct.toFixed(1)}%
+                    </span>
+                    <span className="text-[var(--fg-subtle)]">{' · '}</span>
                     <span style={{ color: 'var(--color-pl)' }} className="font-medium">
-                      B {u.bolsonaroPct.toFixed(1)}%
+                      Flávio {u.bolsonaroPct.toFixed(1)}%
                     </span>
                   </span>
                 ) : (
-                  <span>0,0% vs 0,0%</span>
+                  <span className="text-[var(--fg-subtle)] whitespace-nowrap">Aguardando boletins</span>
                 )}
-                <span>
-                  {restantes > 0 ? `-${restantes.toLocaleString('pt-BR')} urnas` : `100% · ${u.timestamp.slice(0, 5)}`}
+
+                <span className="text-[var(--fg-subtle)] whitespace-nowrap">
+                  {hasVotes ? (
+                    <>
+                      <span>22: {base22.lula2022.toFixed(1)}%</span>
+                      {' ('}
+                      <span
+                        style={{
+                          color:
+                            Math.abs(deltaLula) < 0.05
+                              ? 'var(--fg-subtle)'
+                              : deltaLula > 0
+                              ? 'var(--color-pt)'
+                              : 'var(--color-pl)'
+                        }}
+                      >
+                        {deltaLula >= 0 ? `+${deltaLula.toFixed(1)}% L` : `+${Math.abs(deltaLula).toFixed(1)}% B`}
+                      </span>
+                      {')'}
+                    </>
+                  ) : (
+                    <span>
+                      2022: L {base22.lula2022.toFixed(1)}% · B {base22.bolso2022.toFixed(1)}%
+                    </span>
+                  )}
                 </span>
               </div>
             </div>
@@ -249,7 +367,7 @@ export function StateBreakdown({
 
       {/* Botão para expandir/recolher todas as 28 UFs */}
       {sortedUFs.length > 12 && (
-        <div className="mt-4 text-center">
+        <div className="mt-5 text-center">
           <button
             type="button"
             onClick={() => setShowAllUFs(prev => !prev)}

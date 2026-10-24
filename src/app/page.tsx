@@ -120,13 +120,8 @@ export default function HomePage() {
               cand2={cands2026[1]}
             />
 
-            {/* Apuração Direta Multi-UF por Região e Estado (28 UFs) */}
-            <StateBreakdown
-              ufs={estado2026?.ufs}
-              secoesAdiantadasUF={estado2026?.secoesAdiantadasUF}
-              votosAdiantadosUF={estado2026?.votosAdiantadosUF}
-              origem={estado2026?.origem}
-            />
+            {/* Apuração por Região e Estado (28 UFs vs 2022) */}
+            <StateBreakdown ufs={estado2026?.ufs} />
 
             {/* Demais Candidatos em Lista Tabular Limpa */}
             <OtherCandidates

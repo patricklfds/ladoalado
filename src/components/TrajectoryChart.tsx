@@ -445,26 +445,17 @@ export function TrajectoryChart({
             />
           )}
 
-          {/* Marco discreto da Virada Histórica de 2022 (67,76% · 50,0%) */}
+          {/* Marco discreto da Virada Histórica de 2022 (67,76% · 50,0%) sem texto sobreposto */}
           {timeline2022.length > 0 && (
-            <g opacity={hoverPct !== null && Math.abs(hoverPct - 67.76) < 0.2 ? 1 : 0.55}>
-              <circle
-                cx={virada2022X}
-                cy={y50}
-                r="2.5"
-                fill="var(--bg)"
-                stroke="var(--fg-subtle)"
-                strokeWidth="1.2"
-              />
-              <text
-                x={virada2022X}
-                y={y50 - 6}
-                textAnchor="middle"
-                className="fill-[var(--fg-subtle)] text-[9px] font-mono tabular-nums"
-              >
-                virada 22 (67,8%)
-              </text>
-            </g>
+            <circle
+              cx={virada2022X}
+              cy={y50}
+              r={hoverPct !== null && Math.abs(hoverPct - 67.76) < 0.2 ? "3.5" : "2.2"}
+              fill="var(--bg)"
+              stroke="var(--fg-subtle)"
+              strokeWidth="1.2"
+              opacity={hoverPct !== null && Math.abs(hoverPct - 67.76) < 0.2 ? 1 : 0.6}
+            />
           )}
 
           {/* Curvas 2026 (Sólidas com cores dinâmicas dos candidatos 1º e 2º) */}
