@@ -293,58 +293,102 @@ export function ComparisonArena({
         <div className="mt-10 pt-6 border-t border-[var(--border)] flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono uppercase tracking-widest text-[var(--fg-muted)] font-medium">
-                Mercado Preditivo
-              </span>
-              <span className="text-[var(--fg-subtle)]">·</span>
               <a
                 href={polymarket.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs font-mono text-[var(--fg-subtle)] hover:text-[var(--fg)] transition-colors underline decoration-[var(--border)] underline-offset-4"
+                className="text-xs font-mono uppercase tracking-widest text-[var(--fg-muted)] hover:text-[var(--fg)] font-medium transition-colors underline decoration-[var(--border)] underline-offset-4"
               >
                 Polymarket ↗
               </a>
             </div>
-            <p className="text-xs font-mono text-[var(--fg-subtle)] tabular-nums">
+            <p className="text-xs font-mono text-[var(--fg-subtle)]">
               Probabilidade implícita de vitória em tempo real
-              {polymarket.volumeUsd && polymarket.volumeUsd > 0
-                ? ` · US$ ${(polymarket.volumeUsd / 1_000_000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M em volume`
-                : ''}
             </p>
           </div>
 
           <div className="grid grid-cols-2 gap-8 sm:gap-12 md:w-1/2">
             {(polymarket.bolsonaroPct >= polymarket.lulaPct
               ? [
-                  { nome: 'Flávio Bolsonaro', partido: 'PL', pct: polymarket.bolsonaroPct, cor: 'var(--color-pl)', isLead: true },
-                  { nome: 'Lula', partido: 'PT', pct: polymarket.lulaPct, cor: 'var(--color-pt)', isLead: false }
+                  {
+                    nome: 'Flávio Bolsonaro',
+                    partido: 'PL',
+                    pct: polymarket.bolsonaroPct,
+                    deltaPct: polymarket.bolsonaroDeltaPct ?? 0,
+                    cor: 'var(--color-pl)',
+                    isLead: true
+                  },
+                  {
+                    nome: 'Lula',
+                    partido: 'PT',
+                    pct: polymarket.lulaPct,
+                    deltaPct: polymarket.lulaDeltaPct ?? 0,
+                    cor: 'var(--color-pt)',
+                    isLead: false
+                  }
                 ]
               : [
-                  { nome: 'Lula', partido: 'PT', pct: polymarket.lulaPct, cor: 'var(--color-pt)', isLead: true },
-                  { nome: 'Flávio Bolsonaro', partido: 'PL', pct: polymarket.bolsonaroPct, cor: 'var(--color-pl)', isLead: false }
+                  {
+                    nome: 'Lula',
+                    partido: 'PT',
+                    pct: polymarket.lulaPct,
+                    deltaPct: polymarket.lulaDeltaPct ?? 0,
+                    cor: 'var(--color-pt)',
+                    isLead: true
+                  },
+                  {
+                    nome: 'Flávio Bolsonaro',
+                    partido: 'PL',
+                    pct: polymarket.bolsonaroPct,
+                    deltaPct: polymarket.bolsonaroDeltaPct ?? 0,
+                    cor: 'var(--color-pl)',
+                    isLead: false
+                  }
                 ]
-            ).map(item => (
-              <div key={item.partido}>
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className={`text-xs sm:text-sm font-medium truncate ${item.isLead ? 'text-[var(--fg)]' : 'text-[var(--fg-muted)]'}`}>
-                    {item.nome}
-                  </span>
-                  <span className={`font-mono tabular-nums text-lg sm:text-xl font-light tracking-tight ${item.isLead ? 'text-[var(--fg)]' : 'text-[var(--fg-muted)]'}`}>
-                    {item.pct.toFixed(1)}%
-                  </span>
+            ).map(item => {
+              const windowLabel = polymarket.deltaWindow || '1h';
+              const isPos = item.deltaPct > 0.04;
+              const isNeg = item.deltaPct < -0.04;
+              const formattedDelta = `${isPos ? '+' : ''}${item.deltaPct.toFixed(1)}%`;
+
+              return (
+                <div key={item.partido}>
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className={`text-xs sm:text-sm font-medium truncate ${item.isLead ? 'text-[var(--fg)]' : 'text-[var(--fg-muted)]'}`}>
+                      {item.nome}
+                    </span>
+                    <span className={`font-mono tabular-nums text-lg sm:text-xl font-light tracking-tight ${item.isLead ? 'text-[var(--fg)]' : 'text-[var(--fg-muted)]'}`}>
+                      {item.pct.toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="mt-2 w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-500 ease-out"
+                      style={{
+                        width: `${Math.min(100, Math.max(0, item.pct))}%`,
+                        backgroundColor: item.cor
+                      }}
+                    />
+                  </div>
+                  <div className="mt-1.5 flex items-center justify-between text-[11px] font-mono tabular-nums">
+                    <span className="text-[var(--fg-subtle)]">
+                      Variação ({windowLabel})
+                    </span>
+                    <span
+                      className={`font-medium ${
+                        isPos
+                          ? 'text-[var(--color-positive)]'
+                          : isNeg
+                            ? 'text-[var(--color-negative)]'
+                            : 'text-[var(--fg-subtle)]'
+                      }`}
+                    >
+                      {formattedDelta}
+                    </span>
+                  </div>
                 </div>
-                <div className="mt-2 w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-500 ease-out"
-                    style={{
-                      width: `${Math.min(100, Math.max(0, item.pct))}%`,
-                      backgroundColor: item.cor
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

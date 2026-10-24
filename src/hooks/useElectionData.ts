@@ -165,6 +165,7 @@ export function useElectionData() {
   const hasLoadedRef = useRef<boolean>(false);
   const lastFetchStartMsRef = useRef<number>(0);
   const latestStateRef = useRef<ElectionState | null>(null);
+  const polymarketHistoryRef = useRef<Array<{ timestampMs: number; lulaPct: number; bolsonaroPct: number }>>([]);
 
   // 1. Carregar o arquivo estático de 2022 (2º Turno) na inicialização
   useEffect(() => {
@@ -217,6 +218,36 @@ export function useElectionData() {
       if (!res.ok) throw new Error(`Status ${res.status}`);
 
       const rawData: ElectionState = await res.json();
+
+      if (rawData.polymarket) {
+        const nowMs = Date.now();
+        const hist = polymarketHistoryRef.current;
+        const lastPt = hist[hist.length - 1];
+        if (!lastPt || nowMs - lastPt.timestampMs >= 10000) {
+          hist.push({
+            timestampMs: nowMs,
+            lulaPct: rawData.polymarket.lulaPct,
+            bolsonaroPct: rawData.polymarket.bolsonaroPct
+          });
+          while (hist.length > 0 && nowMs - hist[0].timestampMs > 30 * 60 * 1000) {
+            hist.shift();
+          }
+        }
+        const pt5m = hist.find(p => nowMs - p.timestampMs >= 3 * 60 * 1000 && nowMs - p.timestampMs <= 8 * 60 * 1000);
+        if (
+          pt5m &&
+          (Math.abs(rawData.polymarket.lulaPct - pt5m.lulaPct) >= 0.1 ||
+            Math.abs(rawData.polymarket.bolsonaroPct - pt5m.bolsonaroPct) >= 0.1)
+        ) {
+          rawData.polymarket = {
+            ...rawData.polymarket,
+            lulaDeltaPct: Number((rawData.polymarket.lulaPct - pt5m.lulaPct).toFixed(1)),
+            bolsonaroDeltaPct: Number((rawData.polymarket.bolsonaroPct - pt5m.bolsonaroPct).toFixed(1)),
+            deltaWindow: '5m'
+          };
+        }
+      }
+
       const mergedState = mergeMonotonicElectionState(latestStateRef.current, rawData);
       latestStateRef.current = mergedState;
       setEstado2026(mergedState);

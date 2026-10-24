@@ -208,13 +208,18 @@ const scopeHighWaterMark = new Map<string, ParsedScopeData>();
 const liveCache = new Map<string, { timestampMs: number; state: ElectionState }>();
 const inFlightRequests = new Map<string, Promise<ElectionState>>();
 
-// Cache em memória de 15s para as probabilidades ao vivo do Polymarket (não bloqueia a apuração TSE)
+// Cache em memória de 15s + buffer histórico circular (5m / 15m / 1h) para as probabilidades do Polymarket
 const POLYMARKET_EVENT_URL = 'https://polymarket.com/event/brazil-presidential-election';
+const polymarketHistory: Array<{ timestampMs: number; lulaPct: number; bolsonaroPct: number }> = [];
+
 let polymarketCache: { timestampMs: number; data: PolymarketOdds } = {
   timestampMs: 0,
   data: {
     lulaPct: 17.5,
     bolsonaroPct: 82.4,
+    lulaDeltaPct: 0.5,
+    bolsonaroDeltaPct: -0.5,
+    deltaWindow: '1h',
     volumeUsd: 194749220,
     updatedAtISO: new Date().toISOString(),
     url: POLYMARKET_EVENT_URL
@@ -228,6 +233,8 @@ interface PolymarketMarketItem {
   question?: string;
   outcomePrices?: string | string[];
   lastTradePrice?: number | string;
+  oneHourPriceChange?: number | string;
+  oneDayPriceChange?: number | string;
 }
 
 interface PolymarketEventPayload {
@@ -241,6 +248,10 @@ function parsePolymarketEvents(events: PolymarketEventPayload[]): PolymarketOdds
 
   let lulaPct: number | null = null;
   let bolsonaroPct: number | null = null;
+  let lula1hDelta: number | null = null;
+  let bolso1hDelta: number | null = null;
+  let lula24hDelta: number | null = null;
+  let bolso24hDelta: number | null = null;
 
   for (const m of ev.markets) {
     if (!m.active || m.closed) continue;
@@ -263,11 +274,17 @@ function parsePolymarketEvents(events: PolymarketEventPayload[]): PolymarketOdds
 
     if (!Number.isFinite(yesPrice) || yesPrice <= 0) continue;
     const pct = Number((yesPrice * 100).toFixed(1));
+    const chg1h = m.oneHourPriceChange !== undefined ? Number((Number(m.oneHourPriceChange) * 100).toFixed(1)) : null;
+    const chg24h = m.oneDayPriceChange !== undefined ? Number((Number(m.oneDayPriceChange) * 100).toFixed(1)) : null;
 
     if (title.includes('LULA')) {
       lulaPct = pct;
+      if (chg1h !== null && Number.isFinite(chg1h)) lula1hDelta = chg1h;
+      if (chg24h !== null && Number.isFinite(chg24h)) lula24hDelta = chg24h;
     } else if (title.includes('BOLSONARO') || title.includes('FLÁVIO') || title.includes('FLAVIO')) {
       bolsonaroPct = pct;
+      if (chg1h !== null && Number.isFinite(chg1h)) bolso1hDelta = chg1h;
+      if (chg24h !== null && Number.isFinite(chg24h)) bolso24hDelta = chg24h;
     }
   }
 
@@ -276,9 +293,68 @@ function parsePolymarketEvents(events: PolymarketEventPayload[]): PolymarketOdds
   const finalLula = lulaPct ?? Number((100 - finalBolso).toFixed(1));
   const volumeUsd = ev.volume !== undefined ? Number(ev.volume) : undefined;
 
+  // Registra no buffer circular de até 60 minutos para detectar oscilações rápidas de 5m e 15m durante a apuração
+  const nowMs = Date.now();
+  const lastSample = polymarketHistory[polymarketHistory.length - 1];
+  if (!lastSample || nowMs - lastSample.timestampMs >= 15000) {
+    polymarketHistory.push({ timestampMs: nowMs, lulaPct: finalLula, bolsonaroPct: finalBolso });
+    while (polymarketHistory.length > 0 && nowMs - polymarketHistory[0].timestampMs > 65 * 60 * 1000) {
+      polymarketHistory.shift();
+    }
+  }
+
+  // Seleção adaptativa de janela: prioriza 5m e 15m quando há movimento na apuração ao vivo; caso contrário, usa 1h / 24h da API Gamma
+  const sample5m = polymarketHistory.find(
+    p => nowMs - p.timestampMs >= 3 * 60 * 1000 && nowMs - p.timestampMs <= 8 * 60 * 1000
+  );
+  const sample15m = polymarketHistory.find(
+    p => nowMs - p.timestampMs >= 10 * 60 * 1000 && nowMs - p.timestampMs <= 22 * 60 * 1000
+  );
+
+  let lulaDeltaPct = 0;
+  let bolsonaroDeltaPct = 0;
+  let deltaWindow = '1h';
+
+  if (
+    sample5m &&
+    (Math.abs(finalLula - sample5m.lulaPct) >= 0.1 || Math.abs(finalBolso - sample5m.bolsonaroPct) >= 0.1)
+  ) {
+    lulaDeltaPct = Number((finalLula - sample5m.lulaPct).toFixed(1));
+    bolsonaroDeltaPct = Number((finalBolso - sample5m.bolsonaroPct).toFixed(1));
+    deltaWindow = '5m';
+  } else if (
+    sample15m &&
+    (Math.abs(finalLula - sample15m.lulaPct) >= 0.1 || Math.abs(finalBolso - sample15m.bolsonaroPct) >= 0.1)
+  ) {
+    lulaDeltaPct = Number((finalLula - sample15m.lulaPct).toFixed(1));
+    bolsonaroDeltaPct = Number((finalBolso - sample15m.bolsonaroPct).toFixed(1));
+    deltaWindow = '15m';
+  } else if (
+    (lula1hDelta !== null && Math.abs(lula1hDelta) >= 0.1) ||
+    (bolso1hDelta !== null && Math.abs(bolso1hDelta) >= 0.1)
+  ) {
+    lulaDeltaPct = lula1hDelta ?? Number((-(bolso1hDelta ?? 0)).toFixed(1));
+    bolsonaroDeltaPct = bolso1hDelta ?? Number((-(lula1hDelta ?? 0)).toFixed(1));
+    deltaWindow = '1h';
+  } else if (
+    (lula24hDelta !== null && Math.abs(lula24hDelta) >= 0.1) ||
+    (bolso24hDelta !== null && Math.abs(bolso24hDelta) >= 0.1)
+  ) {
+    lulaDeltaPct = lula24hDelta ?? Number((-(bolso24hDelta ?? 0)).toFixed(1));
+    bolsonaroDeltaPct = bolso24hDelta ?? Number((-(lula24hDelta ?? 0)).toFixed(1));
+    deltaWindow = '24h';
+  } else if (lula1hDelta !== null || bolso1hDelta !== null) {
+    lulaDeltaPct = lula1hDelta ?? 0;
+    bolsonaroDeltaPct = bolso1hDelta ?? 0;
+    deltaWindow = '1h';
+  }
+
   return {
     lulaPct: finalLula,
     bolsonaroPct: finalBolso,
+    lulaDeltaPct,
+    bolsonaroDeltaPct,
+    deltaWindow,
     volumeUsd: Number.isFinite(volumeUsd) ? volumeUsd : undefined,
     updatedAtISO: new Date().toISOString(),
     url: POLYMARKET_EVENT_URL
@@ -923,6 +999,11 @@ function generateDemoState2026(searchParams?: URLSearchParams): ElectionState {
     };
   });
 
+  const basePoly = polymarketCache.data;
+  const hasLiveDelta =
+    (basePoly.lulaDeltaPct !== undefined && Math.abs(basePoly.lulaDeltaPct) >= 0.1) ||
+    (basePoly.bolsonaroDeltaPct !== undefined && Math.abs(basePoly.bolsonaroDeltaPct) >= 0.1);
+
   return {
     ano: 2026,
     timestamp: timeStr,
@@ -940,7 +1021,14 @@ function generateDemoState2026(searchParams?: URLSearchParams): ElectionState {
     secoesAdiantadasUF: pct > 0 && pct < 100 ? 1842 : 0,
     votosAdiantadosUF: pct > 0 && pct < 100 ? 214590 : 0,
     ufs: demoUFs,
-    polymarket: polymarketCache.data,
+    polymarket: hasLiveDelta
+      ? basePoly
+      : {
+          ...basePoly,
+          lulaDeltaPct: 1.8,
+          bolsonaroDeltaPct: -1.8,
+          deltaWindow: '5m'
+        },
     candidatos: rawCandidatos,
     status: pct >= 99.9 ? 'finalizada' : pct > 0 ? 'em_andamento' : 'aguardando',
     origem: 'tse-demo',
@@ -974,6 +1062,7 @@ export async function GET(request: NextRequest) {
   const cycle = /^ele\d{4}$/.test(rawCycle) ? rawCycle : DEFAULT_ELECTION_CYCLE;
 
   if (forceDemo || process.env.NEXT_PUBLIC_DEMO_MODE === 'true') {
+    await getPolymarketOdds();
     return NextResponse.json(generateDemoState2026(searchParams), {
       status: 200,
       headers: {

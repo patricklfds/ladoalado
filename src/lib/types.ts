@@ -61,6 +61,9 @@ export interface UFResult {
 export interface PolymarketOdds {
   lulaPct: number;
   bolsonaroPct: number;
+  lulaDeltaPct?: number;
+  bolsonaroDeltaPct?: number;
+  deltaWindow?: string;          // ex: "5m", "15m", "1h", "24h"
   volumeUsd?: number;
   updatedAtISO: string;
   url: string;
