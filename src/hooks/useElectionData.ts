@@ -5,7 +5,8 @@ import type {
   ElectionState,
   TimelinePoint2022,
   TimelinePoint2026,
-  ComparisonMode
+  ComparisonMode,
+  UFResult
 } from '@/lib/types';
 import {
   point2022ToElectionState,
@@ -14,9 +15,119 @@ import {
   calculatePaceDifferenceMinutes
 } from '@/lib/comparator';
 
-const POLLING_INTERVAL_SECONDS = 8;
+const POLLING_INTERVAL_SECONDS = 5;
 const STORAGE_KEY_2026_2T = 'ladoalado_timeline_2026_2t';
 const LEGACY_STORAGE_KEY_1T = 'ladoalado_timeline_2026';
+
+function computeClientPrecisePct(secoesApuradas: number, totalSecoes: number, totalVotosValidos: number): number {
+  if (totalSecoes <= 0 || (secoesApuradas <= 0 && totalVotosValidos <= 0)) return 0;
+  if (secoesApuradas >= totalSecoes) return 100;
+  const rounded = Number(((secoesApuradas / totalSecoes) * 100).toFixed(2));
+  if (rounded <= 0) return 0.01;
+  if (rounded >= 100) return 99.99;
+  return rounded;
+}
+
+/**
+ * Fusão monotônica no cliente (High-Water Mark por UF + Nacional):
+ * Garante que mesmo quando requisições consecutivas caem em diferentes instâncias serverless
+ * da Vercel ou diferentes nós de borda da Akamai, o navegador do usuário preserve o estado
+ * mais avançado de cada uma das 28 UFs e nunca retroceda nenhum voto ou seção.
+ */
+function mergeMonotonicElectionState(prev: ElectionState | null, incoming: ElectionState): ElectionState {
+  if (!prev) return incoming;
+  if (prev.origem.includes('demo') || incoming.origem.includes('demo')) {
+    return incoming;
+  }
+
+  // Se o TSE realizou zerésima (todos os dados voltaram a 0), aceitar o reset limpo
+  if (incoming.secoesApuradas === 0 && incoming.totalVotosValidos === 0) {
+    const allIncomingUFsZero = !incoming.ufs || incoming.ufs.every(u => u.secoesApuradas === 0);
+    if (allIncomingUFsZero) return incoming;
+  }
+
+  // 1. Fundir as 28 UFs preservando o snapshot mais avançado de cada estado
+  let mergedUFs: UFResult[] | undefined = incoming.ufs;
+  if (prev.ufs && prev.ufs.length > 0 && incoming.ufs && incoming.ufs.length > 0) {
+    const prevMap = new Map<string, UFResult>(prev.ufs.map(u => [u.uf, u]));
+    mergedUFs = incoming.ufs.map(incUF => {
+      const oldUF = prevMap.get(incUF.uf);
+      if (!oldUF) return incUF;
+      if (
+        incUF.secoesApuradas > oldUF.secoesApuradas ||
+        (incUF.secoesApuradas === oldUF.secoesApuradas && incUF.totalVotosValidos >= oldUF.totalVotosValidos)
+      ) {
+        return incUF;
+      }
+      return oldUF;
+    });
+  }
+
+  // 2. Verificar se o somatório das 28 UFs fundidas no cliente supera o total nacional recebido
+  if (mergedUFs && mergedUFs.length === 28) {
+    const sumTotalSecoes = mergedUFs.reduce((acc, u) => acc + u.totalSecoes, 0);
+    const sumSecoesApuradas = mergedUFs.reduce((acc, u) => acc + u.secoesApuradas, 0);
+    const sumVotosValidos = mergedUFs.reduce((acc, u) => acc + u.totalVotosValidos, 0);
+
+    if (
+      sumSecoesApuradas > incoming.secoesApuradas ||
+      (sumSecoesApuradas === incoming.secoesApuradas && sumVotosValidos > incoming.totalVotosValidos)
+    ) {
+      const sumLulaVotos = mergedUFs.reduce((acc, u) => acc + u.lulaVotos, 0);
+      const sumBolsoVotos = mergedUFs.reduce((acc, u) => acc + u.bolsonaroVotos, 0);
+
+      const updatedCands = incoming.candidatos.map(c => {
+        const upper = c.nome.toUpperCase();
+        const isLula = c.numero === '13' || upper.includes('LULA');
+        const isBolso = c.numero === '22' || upper.includes('BOLSONARO');
+        const votos = isLula ? Math.max(c.votos, sumLulaVotos) : isBolso ? Math.max(c.votos, sumBolsoVotos) : c.votos;
+        const percentual = sumVotosValidos > 0 ? Number(((votos / sumVotosValidos) * 100).toFixed(2)) : 0;
+        return { ...c, votos, percentual };
+      });
+
+      updatedCands.sort((a, b) => (b.percentual - a.percentual) || (b.votos - a.votos) || (a.posicao - b.posicao));
+      updatedCands.forEach((c, idx) => {
+        c.posicao = idx + 1;
+      });
+      if (updatedCands.length === 2 && sumVotosValidos > 0) {
+        updatedCands[1].percentual = Number(Math.max(0, 100 - updatedCands[0].percentual).toFixed(2));
+      }
+
+      const secoesTotalizadasPct = computeClientPrecisePct(sumSecoesApuradas, sumTotalSecoes, sumVotosValidos);
+
+      return {
+        ...incoming,
+        secoesTotalizadasPct,
+        totalSecoes: sumTotalSecoes,
+        secoesApuradas: sumSecoesApuradas,
+        totalVotosValidos: sumVotosValidos,
+        candidatos: updatedCands,
+        ufs: mergedUFs,
+        secoesAdiantadasUF:
+          (incoming.secoesAdiantadasUF ?? 0) + Math.max(0, sumSecoesApuradas - incoming.secoesApuradas),
+        votosAdiantadosUF:
+          (incoming.votosAdiantadosUF ?? 0) + Math.max(0, sumVotosValidos - incoming.totalVotosValidos)
+      };
+    }
+  }
+
+  // 3. Se o estado nacional anterior já era mais avançado que o incoming, manter o anterior com dataHoraISO atualizada
+  if (
+    prev.secoesApuradas > incoming.secoesApuradas ||
+    (prev.secoesApuradas === incoming.secoesApuradas && prev.totalVotosValidos > incoming.totalVotosValidos)
+  ) {
+    return {
+      ...prev,
+      dataHoraISO: incoming.dataHoraISO,
+      ufs: mergedUFs || prev.ufs
+    };
+  }
+
+  return {
+    ...incoming,
+    ufs: mergedUFs
+  };
+}
 
 export function useElectionData() {
   const [modo, setModo] = useState<ComparisonMode>('urnas');
@@ -24,7 +135,6 @@ export function useElectionData() {
   const [timeline2026, setTimeline2026] = useState<TimelinePoint2026[]>(() => {
     if (typeof window !== 'undefined') {
       try {
-        // Limpar cache legado do 1º turno para garantir isolamento total no 2º turno
         localStorage.removeItem(LEGACY_STORAGE_KEY_1T);
         const saved = localStorage.getItem(STORAGE_KEY_2026_2T);
         if (saved) {
@@ -44,11 +154,15 @@ export function useElectionData() {
   const [isCarregando, setIsCarregando] = useState<boolean>(true);
   const [isAtualizando, setIsAtualizando] = useState<boolean>(false);
   const [erro, setErro] = useState<string | null>(null);
-  const [pontosSessao2026, setPontosSessao2026] = useState<Array<{ tempo: string; pct: number; lulaPct: number; oposicaoPct: number }>>([]);
+  const [pontosSessao2026, setPontosSessao2026] = useState<
+    Array<{ tempo: string; pct: number; lulaPct: number; oposicaoPct: number }>
+  >([]);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const hasLoadedRef = useRef<boolean>(false);
+  const lastFetchStartMsRef = useRef<number>(0);
+  const latestStateRef = useRef<ElectionState | null>(null);
 
   // 1. Carregar o arquivo estático de 2022 (2º Turno) na inicialização
   useEffect(() => {
@@ -65,7 +179,7 @@ export function useElectionData() {
     load2022();
   }, []);
 
-  // 2. Função de busca de dados do TSE (2026) - Estável, sem dependência de estado2026
+  // 2. Função de busca de dados do TSE (2026)
   const fetch2026Data = useCallback(async () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -73,6 +187,7 @@ export function useElectionData() {
 
     const controller = new AbortController();
     abortControllerRef.current = controller;
+    lastFetchStartMsRef.current = Date.now();
 
     await Promise.resolve();
     setIsAtualizando(true);
@@ -80,10 +195,9 @@ export function useElectionData() {
       setIsCarregando(true);
     }
 
-    const minDelayPromise = new Promise(resolve => setTimeout(resolve, 150));
+    const minDelayPromise = new Promise(resolve => setTimeout(resolve, 120));
 
     try {
-      // Passar query string atual (ex: ?demo=true&pct1=51) e timestamp para bypassar qualquer cache
       const currentSearch = typeof window !== 'undefined' ? window.location.search : '';
       const baseApiUrl = currentSearch ? `/api/tse${currentSearch}` : '/api/tse';
       const sep = baseApiUrl.includes('?') ? '&' : '?';
@@ -92,6 +206,7 @@ export function useElectionData() {
       const [res] = await Promise.all([
         fetch(url, {
           signal: controller.signal,
+          cache: 'no-store',
           headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
         }),
         minDelayPromise
@@ -99,42 +214,44 @@ export function useElectionData() {
 
       if (!res.ok) throw new Error(`Status ${res.status}`);
 
-      const data: ElectionState = await res.json();
-      setEstado2026(data);
+      const rawData: ElectionState = await res.json();
+      const mergedState = mergeMonotonicElectionState(latestStateRef.current, rawData);
+      latestStateRef.current = mergedState;
+      setEstado2026(mergedState);
       hasLoadedRef.current = true;
       setErro(null);
 
       // Registrar ponto de sessão para o gráfico Sparkline
-      const cand1Pct = data.candidatos[0]?.percentual || 0;
-      const cand2Pct = data.candidatos[1]?.percentual || 0;
-      setPontosSessao2026(prev => {
+      const cand1Pct = mergedState.candidatos[0]?.percentual || 0;
+      const cand2Pct = mergedState.candidatos[1]?.percentual || 0;
+      setPontosSessao2026(prevPts => {
         const novoPonto = {
-          tempo: data.timestamp.slice(0, 5),
-          pct: data.secoesTotalizadasPct,
+          tempo: mergedState.timestamp.slice(0, 5),
+          pct: mergedState.secoesTotalizadasPct,
           lulaPct: cand1Pct,
           oposicaoPct: cand2Pct
         };
-        if (prev.length > 0 && prev[prev.length - 1].tempo === novoPonto.tempo) {
-          const updated = [...prev];
+        if (prevPts.length > 0 && prevPts[prevPts.length - 1].tempo === novoPonto.tempo) {
+          const updated = [...prevPts];
           updated[updated.length - 1] = novoPonto;
           return updated;
         }
-        return [...prev, novoPonto];
+        return [...prevPts, novoPonto];
       });
 
       // Sincronizar o histórico real da apuração de 2026
-      const serverTimeline = data.timeline2026 || [];
+      const serverTimeline = mergedState.timeline2026 || [];
       const currentPoint: TimelinePoint2026 = {
-        urnasPct: data.secoesTotalizadasPct,
-        timestamp: data.timestamp,
+        urnasPct: mergedState.secoesTotalizadasPct,
+        timestamp: mergedState.timestamp,
         candidatos: Object.fromEntries(
-          data.candidatos.map(c => [c.nome.toUpperCase().trim(), c.percentual])
+          mergedState.candidatos.map(c => [c.nome.toUpperCase().trim(), c.percentual])
         )
       };
 
-      setTimeline2026(prev => {
+      setTimeline2026(prevTimeline => {
         const pointMap = new Map<number, TimelinePoint2026>();
-        [...prev, ...serverTimeline, currentPoint].forEach(pt => {
+        [...prevTimeline, ...serverTimeline, currentPoint].forEach(pt => {
           if (pt && pt.urnasPct > 0) {
             const key = Math.round(pt.urnasPct * 100) / 100;
             const existing = pointMap.get(key);
@@ -149,18 +266,17 @@ export function useElectionData() {
             }
           }
         });
-        const merged = Array.from(pointMap.values()).sort((a, b) => a.urnasPct - b.urnasPct);
+        const mergedTimeline = Array.from(pointMap.values()).sort((a, b) => a.urnasPct - b.urnasPct);
         try {
-          if (!data.origem.includes('demo')) {
-            localStorage.setItem(STORAGE_KEY_2026_2T, JSON.stringify(merged));
+          if (!mergedState.origem.includes('demo')) {
+            localStorage.setItem(STORAGE_KEY_2026_2T, JSON.stringify(mergedTimeline));
           }
         } catch {
           // ignore
         }
-        return merged;
+        return mergedTimeline;
       });
 
-      // Reiniciar o contador de 20s
       setTempoRestante(POLLING_INTERVAL_SECONDS);
     } catch (err: unknown) {
       if ((err as Error)?.name !== 'AbortError') {
@@ -168,19 +284,21 @@ export function useElectionData() {
         setErro('Falha temporária ao comunicar com o servidor do TSE.');
       }
     } finally {
-      setIsAtualizando(false);
-      setIsCarregando(false);
+      if (abortControllerRef.current === controller) {
+        setIsAtualizando(false);
+        setIsCarregando(false);
+      }
     }
   }, []);
 
-  // 3. Inicializar polling e contador decrescente segundo a segundo
+  // 3. Inicializar polling turbo de 5s e contador decrescente segundo a segundo
   useEffect(() => {
     const initTimer = setTimeout(() => {
       fetch2026Data();
     }, 0);
 
     timerRef.current = setInterval(() => {
-      setTempoRestante((prev) => {
+      setTempoRestante(prev => {
         if (prev <= 1) {
           fetch2026Data();
           return POLLING_INTERVAL_SECONDS;
@@ -191,8 +309,11 @@ export function useElectionData() {
 
     const handleVisibilityOrFocus = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-        setTempoRestante(POLLING_INTERVAL_SECONDS);
-        fetch2026Data();
+        // Debounce de 1.2s para evitar que focus + visibilitychange simultâneos cancelem a requisição em voo
+        if (Date.now() - lastFetchStartMsRef.current > 1200) {
+          setTempoRestante(POLLING_INTERVAL_SECONDS);
+          fetch2026Data();
+        }
       }
     };
 
@@ -222,7 +343,6 @@ export function useElectionData() {
     let point2022: TimelinePoint2022;
 
     if (modo === 'urnas') {
-      // Interpolação matemática exata: 2022 terá exatamente o mesmo % de urnas de 2026!
       point2022 = interpolateByUrnas(timeline2022, estado2026.secoesTotalizadasPct);
     } else {
       point2022 = findByTime(timeline2022, estado2026.timestamp.slice(0, 5));
@@ -231,7 +351,6 @@ export function useElectionData() {
     matching2022State = point2022ToElectionState(point2022);
     ritmoMinutos = calculatePaceDifferenceMinutes(estado2026.timestamp, point2022);
 
-    // Candidatos 1º e 2º colocados de cada ano
     const c1_2026 = estado2026.candidatos[0]?.percentual || 0;
     const c2_2026 = estado2026.candidatos[1]?.percentual || 0;
     const c1_2022 = matching2022State.candidatos[0]?.percentual || 0;
@@ -243,13 +362,14 @@ export function useElectionData() {
     margem2026 = Number((c1_2026 - c2_2026).toFixed(2));
     margem2022 = Number((c1_2022 - c2_2022).toFixed(2));
 
-    // Comparação nominal direta: Lula 2026 vs Lula 2022 e Oposição 2026 vs Bolsonaro 2022
     const lula2026 = estado2026.candidatos.find(c => c.nome.includes('LULA'))?.percentual || c1_2026;
     const lula2022 = matching2022State.candidatos.find(c => c.nome.includes('LULA'))?.percentual || point2022.lulaPct;
     deltaLula = Number((lula2026 - lula2022).toFixed(2));
 
-    const opo2026 = estado2026.candidatos.find(c => !c.nome.includes('LULA') && c.posicao <= 2)?.percentual || c2_2026;
-    const bolso2022 = matching2022State.candidatos.find(c => c.nome.includes('BOLSONARO'))?.percentual || point2022.bolsonaroPct;
+    const opo2026 =
+      estado2026.candidatos.find(c => !c.nome.includes('LULA') && c.posicao <= 2)?.percentual || c2_2026;
+    const bolso2022 =
+      matching2022State.candidatos.find(c => c.nome.includes('BOLSONARO'))?.percentual || point2022.bolsonaroPct;
     deltaOposicao = Number((opo2026 - bolso2022).toFixed(2));
   }
 

@@ -16,7 +16,7 @@ export function Footer({ timestampISO, origem }: FooterProps) {
             <strong>Lado a Lado</strong> | 2026 vs 2022 · 2º Turno Presidencial.
           </p>
           <p>
-            Fonte oficial: CDN Tribunal Superior Eleitoral (soma direta 27 UFs + Exterior + Consolidado) · Atualização a cada 8s.
+            Fonte oficial: CDN Tribunal Superior Eleitoral (Dual-Channel JSON/JWS · 27 UFs + Exterior + BR) · Atualização a cada 5s.
           </p>
         </div>
 

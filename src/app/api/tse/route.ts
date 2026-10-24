@@ -32,7 +32,9 @@ interface TSECargoNode {
 }
 
 interface TSEPayload {
+  dg?: string;
   hg?: string;
+  idg?: string;
   pst?: string;
   s?: string | Record<string, string>;
   st?: string;
@@ -49,9 +51,9 @@ interface UFMetadata {
   nome: string;
   regiao: MacroRegiao;
   defaultSecoes: number;
-  demoWeight: number;      // Peso relativo de votos válidos para simulação realista
-  demoLulaShare: number;   // Tendência histórica aproximada no estado para o modo demo
-  demoProgressBias: number; // Velocidade relativa de apuração do estado (ex: PR/DF rápidos, AC/AP/PA mais lentos)
+  demoWeight: number;
+  demoLulaShare: number;
+  demoProgressBias: number;
 }
 
 const UF_LIST: UFMetadata[] = [
@@ -109,10 +111,29 @@ function parseSafeFloat(val: string | null | undefined, defaultValue: number): n
   return Number.isFinite(num) && num >= 0 && num <= 100 ? Number(num.toFixed(2)) : defaultValue;
 }
 
-// Rate Limiter em memória (comporta polling turbo de 8s + cliques manuais com folga)
+/**
+ * Formata o percentual de seções totalizadas garantindo que:
+ * - Quando há pelo menos 1 seção ou voto apurado, o percentual seja >= 0.01% (nunca arredondando para 0.00%)
+ * - Enquanto ainda restar alguma seção não apurada, o percentual não arredonde prematuramente para 100.00%
+ */
+function computePreciseSecoesPct(secoesApuradas: number, totalSecoes: number, totalVotosValidos: number): number {
+  if (totalSecoes <= 0 || (secoesApuradas <= 0 && totalVotosValidos <= 0)) {
+    return 0;
+  }
+  if (secoesApuradas >= totalSecoes) {
+    return 100;
+  }
+  const raw = (secoesApuradas / totalSecoes) * 100;
+  const rounded = Number(raw.toFixed(2));
+  if (rounded <= 0) return 0.01;
+  if (rounded >= 100) return 99.99;
+  return rounded;
+}
+
+// Rate Limiter em memória (comporta polling turbo de 5s + cliques manuais com ampla margem)
 const ipRequestCounts = new Map<string, { count: number; resetTime: number }>();
 
-function isRateLimited(ip: string, maxRequests = 300, windowMs = 60000): boolean {
+function isRateLimited(ip: string, maxRequests = 400, windowMs = 60000): boolean {
   const now = Date.now();
   const record = ipRequestCounts.get(ip);
   if (!record || now > record.resetTime) {
@@ -123,7 +144,7 @@ function isRateLimited(ip: string, maxRequests = 300, windowMs = 60000): boolean
   return record.count > maxRequests;
 }
 
-// Buffer histórico em memória isolado por código de pleito (impede que testes em outros pleitos contaminem o 6258)
+// Buffer histórico em memória isolado por código de pleito
 const historicalTimelineByCode = new Map<string, TimelinePoint2026[]>();
 
 function recordTimelinePoint(
@@ -161,6 +182,7 @@ function recordTimelinePoint(
 
 interface ParsedScopeData {
   scope: string;
+  idg: number;
   timestamp: string;
   secoesTotalizadasPct: number;
   totalSecoes: number;
@@ -177,12 +199,27 @@ interface ParsedScopeData {
   candidatos: CandidateResult[];
 }
 
-// High-Water Mark monotônico por UF em memória: garante que nenhum estado retroceda por jitter de nó de borda da CDN Akamai
-const ufHighWaterMark = new Map<string, ParsedScopeData>();
+// High-Water Mark monotônico por escopo (BR + 28 UFs) em memória
+const scopeHighWaterMark = new Map<string, ParsedScopeData>();
 
-// Coalescência de requisições (Singleflight) + cache ultra-rápido de 2.5s em memória
+// Coalescência de requisições (Singleflight) + cache ultra-rápido de 1.5s em memória
 const liveCache = new Map<string, { timestampMs: number; state: ElectionState }>();
 const inFlightRequests = new Map<string, Promise<ElectionState>>();
+
+/**
+ * Compara dois snapshots do mesmo escopo (ex: .json vs .jws vs High-Water Mark)
+ * e retorna true se `candidate` for mais recente ou igual a `reference`.
+ */
+function isFresherOrEqualScope(candidate: ParsedScopeData, reference: ParsedScopeData | undefined): boolean {
+  if (!reference) return true;
+  if (candidate.secoesApuradas !== reference.secoesApuradas) {
+    return candidate.secoesApuradas > reference.secoesApuradas;
+  }
+  if (candidate.totalVotosValidos !== reference.totalVotosValidos) {
+    return candidate.totalVotosValidos > reference.totalVotosValidos;
+  }
+  return candidate.idg >= reference.idg;
+}
 
 function parseTSEPayloadToScope(scope: string, tseData: TSEPayload): ParsedScopeData {
   let secoesTotalizadasPct = 0;
@@ -197,17 +234,19 @@ function parseTSEPayloadToScope(scope: string, tseData: TSEPayload): ParsedScope
   let abstencao: number | undefined;
   let abstencaoPct: number | undefined;
   let eleitoradoInstalado = 0;
+  const idg = parseTSEInt(tseData.idg);
   const candidatos: CandidateResult[] = [];
 
   if (tseData.s && typeof tseData.s === 'object') {
     const sObj = tseData.s;
-    secoesTotalizadasPct = parseTSEFloat(sObj.pst);
     totalSecoes = parseTSEInt(sObj.ts);
     secoesApuradas = parseTSEInt(sObj.st);
 
     const vObj = (tseData.v || {}) as Record<string, string>;
     totalVotosValidos = parseTSEInt(vObj.vv || vObj.tv);
     totalVotosComparecimento = parseTSEInt(vObj.tv);
+    secoesTotalizadasPct = computePreciseSecoesPct(secoesApuradas, totalSecoes, totalVotosValidos);
+
     if (vObj.vb !== undefined) votosBrancos = parseTSEInt(vObj.vb);
     if (vObj.pvb !== undefined) votosBrancosPct = parseTSEFloat(vObj.pvb);
     if (vObj.tvn !== undefined || vObj.vn !== undefined) votosNulos = parseTSEInt(vObj.tvn || vObj.vn);
@@ -223,13 +262,18 @@ function parseTSEPayloadToScope(scope: string, tseData: TSEPayload): ParsedScope
         (a.par || []).forEach((p: TSEParNode) => {
           const candList = Array.isArray(p.cand) ? p.cand : [];
           candList.forEach((c: TSECandNode) => {
+            const votos = parseTSEInt(c.vap);
+            const pct =
+              totalVotosValidos > 0
+                ? Number(((votos / totalVotosValidos) * 100).toFixed(2))
+                : parseTSEFloat(c.pvap);
             const candObj: CandidateResult = {
               id: `cand-${c.n}`,
               nome: (c.nmu || c.nm || 'CANDIDATO').slice(0, 40),
               numero: c.n,
               partido: p.sg || cleanPartyName(c.cc),
-              votos: parseTSEInt(c.vap),
-              percentual: parseTSEFloat(c.pvap),
+              votos,
+              percentual: pct,
               posicao: parseInt(c.seq || '1', 10) || 1,
               cor: ''
             };
@@ -240,11 +284,11 @@ function parseTSEPayloadToScope(scope: string, tseData: TSEPayload): ParsedScope
       });
     }
   } else {
-    secoesTotalizadasPct = parseTSEFloat(tseData.pst);
     totalSecoes = parseTSEInt(tseData.s as string);
     secoesApuradas = parseTSEInt(tseData.st as string);
     totalVotosValidos = parseTSEInt(tseData.vscv as string);
     totalVotosComparecimento = totalVotosValidos;
+    secoesTotalizadasPct = computePreciseSecoesPct(secoesApuradas, totalSecoes, totalVotosValidos);
 
     (tseData.cand || []).forEach((c: TSECandNode, idx: number) => {
       const candObj: CandidateResult = {
@@ -267,8 +311,13 @@ function parseTSEPayloadToScope(scope: string, tseData: TSEPayload): ParsedScope
     c.posicao = idx + 1;
   });
 
+  if (candidatos.length === 2 && totalVotosValidos > 0) {
+    candidatos[1].percentual = Number(Math.max(0, 100 - candidatos[0].percentual).toFixed(2));
+  }
+
   return {
     scope,
+    idg,
     timestamp: tseData.hg || '17:00:00',
     secoesTotalizadasPct,
     totalSecoes,
@@ -286,105 +335,112 @@ function parseTSEPayloadToScope(scope: string, tseData: TSEPayload): ParsedScope
   };
 }
 
-async function fetchScopePayload(
+async function fetchSingleUrl(scope: string, url: string): Promise<ParsedScopeData | null> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3200);
+    const res = await fetch(url, {
+      signal: controller.signal,
+      cache: 'no-store',
+      headers: {
+        'Accept': 'application/json, text/plain, */*',
+        'Cache-Control': 'no-cache, no-store, max-age=0',
+        'Pragma': 'no-cache',
+        'User-Agent': 'LadoALado-Eleicoes/2.0 (Jornalismo de Dados)'
+      }
+    });
+    clearTimeout(timeoutId);
+
+    if (!res.ok) return null;
+
+    const rawText = await res.text();
+    let tseData: TSEPayload | null = null;
+    if (url.endsWith('.jws') || rawText.startsWith('eyJ')) {
+      const parts = rawText.split('.');
+      if (parts.length >= 2) {
+        const jsonStr = Buffer.from(parts[1], 'base64url').toString('utf-8');
+        tseData = JSON.parse(jsonStr) as TSEPayload;
+      }
+    } else {
+      tseData = JSON.parse(rawText) as TSEPayload;
+    }
+
+    return tseData ? parseTSEPayloadToScope(scope, tseData) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Busca simultaneamente os dois canais independentes da CDN Akamai (.json e .jws)
+ * para um mesmo escopo (UF ou BR) e retorna o snapshot mais avançado entre os dois.
+ * Como .json e .jws têm janelas de expiração de cache independentes na Akamai,
+ * consultar ambos em paralelo reduz pela metade o tempo de espera por novos boletins.
+ */
+async function fetchDualChannelScope(
   cycle: string,
   electionCode: string,
   paddedCode: string,
   scope: string
 ): Promise<ParsedScopeData | null> {
-  const urls =
-    scope === 'br'
-      ? [
-          `https://resultados.tse.jus.br/oficial/${cycle}/${electionCode}/dados/br/br-c0001-e${paddedCode}-u.json`,
-          `https://resultados.tse.jus.br/oficial/${cycle}/${electionCode}/dados-simplificados/br/br-c0001-e${paddedCode}-r.json`,
-          `https://resultados.tse.jus.br/oficial/${cycle}/${electionCode}/dados/br/br-c0001-e${paddedCode}-u.jws`
-        ]
-      : [
-          `https://resultados.tse.jus.br/oficial/${cycle}/${electionCode}/dados/${scope}/${scope}-c0001-e${paddedCode}-u.json`,
-          `https://resultados.tse.jus.br/oficial/${cycle}/${electionCode}/dados/${scope}/${scope}-c0001-e${paddedCode}-u.jws`
-        ];
+  const baseUrl = `https://resultados.tse.jus.br/oficial/${cycle}/${electionCode}/dados/${scope}/${scope}-c0001-e${paddedCode}`;
+  const [jsonSnap, jwsSnap] = await Promise.all([
+    fetchSingleUrl(scope, `${baseUrl}-u.json`),
+    fetchSingleUrl(scope, `${baseUrl}-u.jws`)
+  ]);
 
-  for (const url of urls) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3400);
-      const res = await fetch(url, {
-        signal: controller.signal,
-        cache: 'no-store',
-        headers: {
-          'Accept': 'application/json, text/plain, */*',
-          'Cache-Control': 'no-cache, no-store, max-age=0',
-          'Pragma': 'no-cache',
-          'User-Agent': 'LadoALado-Eleicoes/2.0 (Jornalismo de Dados)'
-        }
-      });
-      clearTimeout(timeoutId);
-
-      if (!res.ok) continue;
-
-      const rawText = await res.text();
-      let tseData: TSEPayload | null = null;
-      if (url.endsWith('.jws') || rawText.startsWith('eyJ')) {
-        const parts = rawText.split('.');
-        if (parts.length >= 2) {
-          const jsonStr = Buffer.from(parts[1], 'base64url').toString('utf-8');
-          tseData = JSON.parse(jsonStr) as TSEPayload;
-        }
-      } else {
-        tseData = JSON.parse(rawText) as TSEPayload;
-      }
-
-      if (tseData) {
-        return parseTSEPayloadToScope(scope, tseData);
-      }
-    } catch {
-      // Tentar próxima URL se houver
-    }
+  if (jsonSnap && jwsSnap) {
+    return isFresherOrEqualScope(jwsSnap, jsonSnap) ? jwsSnap : jsonSnap;
   }
-
-  return null;
+  return jsonSnap || jwsSnap;
 }
 
 /**
- * Executa a consulta paralela às 28 UFs + Consolidado Nacional (BR),
- * aplicando High-Water Mark por UF e somando diretamente os votos estaduais
- * para entregar a apuração mais rápida possível (mesmo se o arquivo nacional BR atrasar).
+ * Executa a consulta paralela Dual-Channel (.json + .jws) às 28 UFs + Consolidado Nacional (BR)
+ * (58 endpoints simultâneos em ~250ms), aplicando High-Water Mark monotônico por UF e BR.
  */
 async function fetchLiveMultiUFTurboState(cycle: string, electionCode: string): Promise<ElectionState> {
   const paddedCode = electionCode.padStart(6, '0');
   const allScopes = ['br', ...UF_LIST.map(u => u.code)];
 
   const results = await Promise.all(
-    allScopes.map(scope => fetchScopePayload(cycle, electionCode, paddedCode, scope))
+    allScopes.map(scope => fetchDualChannelScope(cycle, electionCode, paddedCode, scope))
   );
 
-  const brParsed = results[0];
+  const rawBr = results[0];
   const ufParsedList = results.slice(1);
 
   // Verificar se houve reset completo (zerésima) no TSE
   const allReturnedZero =
-    (brParsed === null || brParsed.secoesApuradas === 0) &&
+    (rawBr === null || rawBr.secoesApuradas === 0) &&
     ufParsedList.every(u => u === null || u.secoesApuradas === 0);
 
   if (allReturnedZero) {
+    scopeHighWaterMark.delete(`${electionCode}:br`);
     for (const meta of UF_LIST) {
-      ufHighWaterMark.delete(`${electionCode}:${meta.code}`);
+      scopeHighWaterMark.delete(`${electionCode}:${meta.code}`);
     }
     historicalTimelineByCode.delete(electionCode);
   }
 
-  // Atualizar High-Water Mark de cada UF
+  // Atualizar High-Water Mark do consolidado BR
+  if (rawBr) {
+    const brKey = `${electionCode}:br`;
+    const prevBr = scopeHighWaterMark.get(brKey);
+    if (isFresherOrEqualScope(rawBr, prevBr)) {
+      scopeHighWaterMark.set(brKey, rawBr);
+    }
+  }
+  const brParsed = scopeHighWaterMark.get(`${electionCode}:br`) || rawBr;
+
+  // Atualizar High-Water Mark de cada uma das 28 UFs
   ufParsedList.forEach((ufData, idx) => {
     if (!ufData) return;
     const ufCode = UF_LIST[idx].code;
     const key = `${electionCode}:${ufCode}`;
-    const prev = ufHighWaterMark.get(key);
-    if (
-      !prev ||
-      ufData.secoesApuradas > prev.secoesApuradas ||
-      (ufData.secoesApuradas === prev.secoesApuradas && ufData.totalVotosValidos >= prev.totalVotosValidos)
-    ) {
-      ufHighWaterMark.set(key, ufData);
+    const prev = scopeHighWaterMark.get(key);
+    if (isFresherOrEqualScope(ufData, prev)) {
+      scopeHighWaterMark.set(key, ufData);
     }
   });
 
@@ -408,7 +464,7 @@ async function fetchLiveMultiUFTurboState(cycle: string, electionCode: string): 
   >();
 
   for (const meta of UF_LIST) {
-    const snap = ufHighWaterMark.get(`${electionCode}:${meta.code}`);
+    const snap = scopeHighWaterMark.get(`${electionCode}:${meta.code}`);
     if (!snap) continue;
 
     availableUFsCount++;
@@ -475,12 +531,10 @@ async function fetchLiveMultiUFTurboState(cycle: string, electionCode: string): 
     });
   }
 
-  // Se nenhuma UF nem o BR responderam, lançar erro para acionar fallback seguro
   if (!brParsed && availableUFsCount === 0) {
     throw new Error(`Nenhum endpoint do TSE respondeu para pleito ${electionCode}`);
   }
 
-  // Verificar se temos todas as 28 UFs e se o somatório das 28 UFs está >= ao consolidado BR
   const hasCompleteUFs = availableUFsCount === UF_LIST.length;
   const brSecoesApuradas = brParsed?.secoesApuradas ?? 0;
   const brVotosValidos = brParsed?.totalVotosValidos ?? 0;
@@ -491,8 +545,7 @@ async function fetchLiveMultiUFTurboState(cycle: string, electionCode: string): 
       (sumSecoesApuradas === brSecoesApuradas && sumVotosValidos >= brVotosValidos));
 
   if (useUFAggregation) {
-    const secoesTotalizadasPct =
-      sumTotalSecoes > 0 ? Number(((sumSecoesApuradas / sumTotalSecoes) * 100).toFixed(2)) : 0;
+    const secoesTotalizadasPct = computePreciseSecoesPct(sumSecoesApuradas, sumTotalSecoes, sumVotosValidos);
 
     const aggregatedCandidatos: CandidateResult[] = Array.from(candAccumulator.values()).map(c => ({
       id: c.id,
@@ -510,7 +563,6 @@ async function fetchLiveMultiUFTurboState(cycle: string, electionCode: string): 
       c.posicao = idx + 1;
     });
 
-    // Garantir soma de 100.00% no 2º turno quando há votos apurados
     if (aggregatedCandidatos.length === 2 && sumVotosValidos > 0) {
       aggregatedCandidatos[1].percentual = Number(
         Math.max(0, 100 - aggregatedCandidatos[0].percentual).toFixed(2)
@@ -530,7 +582,12 @@ async function fetchLiveMultiUFTurboState(cycle: string, electionCode: string): 
     const secoesAdiantadasUF = Math.max(0, sumSecoesApuradas - brSecoesApuradas);
     const votosAdiantadosUF = Math.max(0, sumVotosValidos - brVotosValidos);
 
-    const timeline2026 = recordTimelinePoint(electionCode, secoesTotalizadasPct, effectiveTimestamp, aggregatedCandidatos);
+    const timeline2026 = recordTimelinePoint(
+      electionCode,
+      secoesTotalizadasPct,
+      effectiveTimestamp,
+      aggregatedCandidatos
+    );
 
     return {
       ano: 2026,
@@ -550,15 +607,24 @@ async function fetchLiveMultiUFTurboState(cycle: string, electionCode: string): 
       votosAdiantadosUF,
       ufs: ufsResult,
       candidatos: aggregatedCandidatos,
-      status: secoesTotalizadasPct >= 99.9 ? 'finalizada' : secoesTotalizadasPct > 0 ? 'em_andamento' : 'aguardando',
+      status:
+        sumSecoesApuradas >= sumTotalSecoes && sumTotalSecoes > 0
+          ? 'finalizada'
+          : secoesTotalizadasPct > 0
+          ? 'em_andamento'
+          : 'aguardando',
       origem: 'tse-uf-turbo',
       timeline2026
     };
   }
 
-  // Fallback para o consolidado BR caso alguma UF tenha falhado no cold start e BR esteja mais adiantado
   const primary = brParsed!;
-  const timeline2026 = recordTimelinePoint(electionCode, primary.secoesTotalizadasPct, primary.timestamp, primary.candidatos);
+  const timeline2026 = recordTimelinePoint(
+    electionCode,
+    primary.secoesTotalizadasPct,
+    primary.timestamp,
+    primary.candidatos
+  );
 
   return {
     ano: 2026,
@@ -579,7 +645,7 @@ async function fetchLiveMultiUFTurboState(cycle: string, electionCode: string): 
     ufs: ufsResult.length > 0 ? ufsResult : undefined,
     candidatos: primary.candidatos,
     status:
-      primary.secoesTotalizadasPct >= 99.9
+      primary.secoesApuradas >= primary.totalSecoes && primary.totalSecoes > 0
         ? 'finalizada'
         : primary.secoesTotalizadasPct > 0
         ? 'em_andamento'
@@ -657,7 +723,6 @@ function generateDemoState2026(searchParams?: URLSearchParams): ElectionState {
   const c1Key = cand1Nome.toUpperCase().trim();
   const c2Key = cand2Nome.toUpperCase().trim();
 
-  // Gerar detalhamento realista das 28 UFs sincronizado com o percentual nacional simulado
   const demoUFs: UFResult[] = UF_LIST.map(meta => {
     const ufPct = Number(Math.min(100, Math.max(0, pct * meta.demoProgressBias)).toFixed(2));
     const ufSecoesApuradas = Math.round((ufPct / 100) * meta.defaultSecoes);
@@ -716,19 +781,17 @@ function generateDemoState2026(searchParams?: URLSearchParams): ElectionState {
 }
 
 export async function GET(request: NextRequest) {
-  // 1. Blindagem de Rate Limiting por IP
   const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0].trim() || '127.0.0.1';
-  if (isRateLimited(clientIp, 300, 60000)) {
+  if (isRateLimited(clientIp, 400, 60000)) {
     return NextResponse.json(
       { erro: 'Limite de requisições excedido. Tente novamente em alguns segundos.' },
-      { status: 429, headers: { 'Retry-After': '10' } }
+      { status: 429, headers: { 'Retry-After': '5' } }
     );
   }
 
   const { searchParams } = new URL(request.url);
   const forceDemo = searchParams.get('demo') === 'true';
 
-  // 2. Validação rigorosa dos parâmetros de pleito contra SSRF / injeções
   const rawCode = searchParams.get('code') || DEFAULT_ELECTION_CODE;
   const rawCycle = searchParams.get('cycle') || DEFAULT_ELECTION_CYCLE;
 
@@ -739,7 +802,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(generateDemoState2026(searchParams), {
       status: 200,
       headers: {
-        'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=30',
+        'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=15',
         'X-Data-Source': 'demo'
       }
     });
@@ -748,11 +811,11 @@ export async function GET(request: NextRequest) {
   const cacheKey = `${cycle}:${electionCode}`;
   const nowMs = Date.now();
   const cached = liveCache.get(cacheKey);
-  if (cached && nowMs - cached.timestampMs < 2500) {
+  if (cached && nowMs - cached.timestampMs < 1500) {
     return NextResponse.json(cached.state, {
       status: 200,
       headers: {
-        'Cache-Control': 'public, s-maxage=2, stale-while-revalidate=5',
+        'Cache-Control': 'public, s-maxage=1, stale-while-revalidate=3',
         'X-Data-Source': cached.state.origem
       }
     });
@@ -772,13 +835,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(electionState, {
       status: 200,
       headers: {
-        'Cache-Control': 'public, s-maxage=2, stale-while-revalidate=5',
+        'Cache-Control': 'public, s-maxage=1, stale-while-revalidate=3',
         'X-Data-Source': electionState.origem
       }
     });
   } catch (error) {
     inFlightRequests.delete(cacheKey);
-    console.error('[TSE API] Erro ao consultar motor Multi-UF do CDN oficial:', error);
+    console.error('[TSE API] Erro ao consultar motor Multi-UF Dual-Channel do CDN oficial:', error);
     return NextResponse.json(generateDemoState2026(searchParams), {
       status: 200,
       headers: {
