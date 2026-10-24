@@ -65,14 +65,21 @@ export function ProgressHeader({
 
       {/* Legenda mínima abaixo da barra */}
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-[var(--fg-subtle)]">
-        <span>{secoesApuradas2026} de {totalSecoes2026} seções apuradas</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span>{secoesApuradas2026} de {totalSecoes2026} seções apuradas</span>
+          {(estado2026?.secoesAdiantadasUF ?? 0) > 0 && (
+            <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+              · +{estado2026!.secoesAdiantadasUF!.toLocaleString('pt-BR')} urnas à frente do painel nacional
+            </span>
+          )}
+        </div>
         {pct2026 > 0 && estado2026?.votosBrancosPct !== undefined ? (
           <span>
             Brancos {estado2026.votosBrancosPct.toFixed(2)}% · Nulos {(estado2026.votosNulosPct ?? 0).toFixed(2)}%
             {estado2026.abstencaoPct !== undefined ? ` · Abstenção ${estado2026.abstencaoPct.toFixed(2)}%` : ''}
           </span>
         ) : (
-          <span>Totalização nacional · 2º Turno</span>
+          <span>Motor Multi-UF (27 UFs + Exterior) · 2º Turno</span>
         )}
       </div>
     </section>

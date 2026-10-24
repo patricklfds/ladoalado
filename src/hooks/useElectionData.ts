@@ -14,7 +14,7 @@ import {
   calculatePaceDifferenceMinutes
 } from '@/lib/comparator';
 
-const POLLING_INTERVAL_SECONDS = 20;
+const POLLING_INTERVAL_SECONDS = 8;
 const STORAGE_KEY_2026_2T = 'ladoalado_timeline_2026_2t';
 const LEGACY_STORAGE_KEY_1T = 'ladoalado_timeline_2026';
 
@@ -80,7 +80,7 @@ export function useElectionData() {
       setIsCarregando(true);
     }
 
-    const minDelayPromise = new Promise(resolve => setTimeout(resolve, 400));
+    const minDelayPromise = new Promise(resolve => setTimeout(resolve, 150));
 
     try {
       // Passar query string atual (ex: ?demo=true&pct1=51) e timestamp para bypassar qualquer cache
@@ -189,8 +189,20 @@ export function useElectionData() {
       });
     }, 1000);
 
+    const handleVisibilityOrFocus = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        setTempoRestante(POLLING_INTERVAL_SECONDS);
+        fetch2026Data();
+      }
+    };
+
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+
     return () => {
       clearTimeout(initTimer);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
       if (timerRef.current) clearInterval(timerRef.current);
       if (abortControllerRef.current) abortControllerRef.current.abort();
     };

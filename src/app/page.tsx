@@ -6,6 +6,7 @@ import { Header } from '@/components/Header';
 import { ProgressHeader } from '@/components/ProgressHeader';
 import { ComparisonArena } from '@/components/ComparisonArena';
 import { TrajectoryChart } from '@/components/TrajectoryChart';
+import { StateBreakdown } from '@/components/StateBreakdown';
 import { OtherCandidates } from '@/components/OtherCandidates';
 import { Footer } from '@/components/Footer';
 
@@ -117,6 +118,14 @@ export default function HomePage() {
               currentPct2026={secoesPct}
               cand1={cands2026[0]}
               cand2={cands2026[1]}
+            />
+
+            {/* Apuração Direta Multi-UF por Região e Estado (28 UFs) */}
+            <StateBreakdown
+              ufs={estado2026?.ufs}
+              secoesAdiantadasUF={estado2026?.secoesAdiantadasUF}
+              votosAdiantadosUF={estado2026?.votosAdiantadosUF}
+              origem={estado2026?.origem}
             />
 
             {/* Demais Candidatos em Lista Tabular Limpa */}

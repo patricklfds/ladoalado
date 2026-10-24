@@ -41,6 +41,23 @@ export interface TimelinePoint2026 {
   candidatos: Record<string, number>;
 }
 
+export type MacroRegiao = 'Sudeste' | 'Nordeste' | 'Sul' | 'Norte' | 'Centro-Oeste' | 'Exterior';
+
+export interface UFResult {
+  uf: string;                    // 'SP', 'MG', 'BA', ..., 'ZZ'
+  nome: string;                  // 'São Paulo', 'Minas Gerais', ...
+  regiao: MacroRegiao;
+  secoesTotalizadasPct: number;
+  totalSecoes: number;
+  secoesApuradas: number;
+  totalVotosValidos: number;
+  timestamp: string;             // "HH:MM:SS" do último boletim da UF
+  lulaPct: number;
+  lulaVotos: number;
+  bolsonaroPct: number;
+  bolsonaroVotos: number;
+}
+
 export interface ElectionState {
   ano: 2022 | 2026;
   timestamp: string;             // "HH:mm" ou "HH:mm:ss"
@@ -55,9 +72,12 @@ export interface ElectionState {
   votosNulosPct?: number;
   abstencao?: number;
   abstencaoPct?: number;
+  secoesAdiantadasUF?: number;   // Quantas seções a soma direta das 28 UFs está à frente do consolidado BR
+  votosAdiantadosUF?: number;    // Quantos votos válidos a soma direta das 28 UFs está à frente do consolidado BR
+  ufs?: UFResult[];              // Detalhamento em tempo real das 27 UFs + Exterior (ZZ)
   candidatos: CandidateResult[];
   status: ElectionStatus;
-  origem: 'tse-live' | 'tse-demo' | 'historico-2022';
+  origem: 'tse-live' | 'tse-uf-turbo' | 'tse-demo' | 'historico-2022';
   mensagemStatus?: string;
   timeline2026?: TimelinePoint2026[];
 }
