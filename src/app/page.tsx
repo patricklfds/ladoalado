@@ -76,7 +76,7 @@ export default function HomePage() {
         {!isCarregando && estado2026 && secoesPct === 0 && (
           <div className="my-4 px-3.5 py-2.5 rounded border border-[var(--border)] bg-[var(--surface)] text-xs font-mono text-[var(--fg-muted)] flex items-center justify-between gap-2">
             <span>
-              ℹ️ Urnas fechadas às 17h00. Aguardando transmissão dos primeiros boletins oficiais pelo TSE.
+              Urnas fechadas às 17h00. Aguardando transmissão dos primeiros boletins oficiais pelo TSE.
             </span>
           </div>
         )}
