@@ -58,6 +58,14 @@ export interface UFResult {
   bolsonaroVotos: number;
 }
 
+export interface PolymarketOdds {
+  lulaPct: number;
+  bolsonaroPct: number;
+  volumeUsd?: number;
+  updatedAtISO: string;
+  url: string;
+}
+
 export interface ElectionState {
   ano: 2022 | 2026;
   timestamp: string;             // "HH:mm" ou "HH:mm:ss"
@@ -75,6 +83,7 @@ export interface ElectionState {
   secoesAdiantadasUF?: number;   // Quantas seções a soma direta das 28 UFs está à frente do consolidado BR
   votosAdiantadosUF?: number;    // Quantos votos válidos a soma direta das 28 UFs está à frente do consolidado BR
   ufs?: UFResult[];              // Detalhamento em tempo real das 27 UFs + Exterior (ZZ)
+  polymarket?: PolymarketOdds;   // Probabilidades em tempo real no Polymarket
   candidatos: CandidateResult[];
   status: ElectionStatus;
   origem: 'tse-live' | 'tse-uf-turbo' | 'tse-demo' | 'historico-2022';

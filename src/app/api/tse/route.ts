@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import https from 'node:https';
 import type {
   ElectionState,
   CandidateResult,
   TimelinePoint2026,
   UFResult,
-  MacroRegiao
+  MacroRegiao,
+  PolymarketOdds
 } from '@/lib/types';
 import { cleanPartyName, getCandidateColor } from '@/lib/candidateUtils';
 
@@ -206,6 +208,174 @@ const scopeHighWaterMark = new Map<string, ParsedScopeData>();
 const liveCache = new Map<string, { timestampMs: number; state: ElectionState }>();
 const inFlightRequests = new Map<string, Promise<ElectionState>>();
 
+// Cache em memória de 15s para as probabilidades ao vivo do Polymarket (não bloqueia a apuração TSE)
+const POLYMARKET_EVENT_URL = 'https://polymarket.com/event/brazil-presidential-election';
+let polymarketCache: { timestampMs: number; data: PolymarketOdds } = {
+  timestampMs: 0,
+  data: {
+    lulaPct: 17.5,
+    bolsonaroPct: 82.4,
+    volumeUsd: 194749220,
+    updatedAtISO: new Date().toISOString(),
+    url: POLYMARKET_EVENT_URL
+  }
+};
+
+interface PolymarketMarketItem {
+  active?: boolean;
+  closed?: boolean;
+  groupItemTitle?: string;
+  question?: string;
+  outcomePrices?: string | string[];
+  lastTradePrice?: number | string;
+}
+
+interface PolymarketEventPayload {
+  volume?: number | string;
+  markets?: PolymarketMarketItem[];
+}
+
+function parsePolymarketEvents(events: PolymarketEventPayload[]): PolymarketOdds | null {
+  const ev = Array.isArray(events) ? events[0] : null;
+  if (!ev || !Array.isArray(ev.markets)) return null;
+
+  let lulaPct: number | null = null;
+  let bolsonaroPct: number | null = null;
+
+  for (const m of ev.markets) {
+    if (!m.active || m.closed) continue;
+    const title = (m.groupItemTitle || m.question || '').toUpperCase();
+    let yesPrice = 0;
+    if (typeof m.outcomePrices === 'string') {
+      try {
+        const parsed = JSON.parse(m.outcomePrices);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          yesPrice = parseFloat(parsed[0]);
+        }
+      } catch {
+        yesPrice = Number(m.lastTradePrice || 0);
+      }
+    } else if (Array.isArray(m.outcomePrices) && m.outcomePrices.length > 0) {
+      yesPrice = parseFloat(m.outcomePrices[0]);
+    } else if (m.lastTradePrice !== undefined) {
+      yesPrice = Number(m.lastTradePrice);
+    }
+
+    if (!Number.isFinite(yesPrice) || yesPrice <= 0) continue;
+    const pct = Number((yesPrice * 100).toFixed(1));
+
+    if (title.includes('LULA')) {
+      lulaPct = pct;
+    } else if (title.includes('BOLSONARO') || title.includes('FLÁVIO') || title.includes('FLAVIO')) {
+      bolsonaroPct = pct;
+    }
+  }
+
+  if (lulaPct === null && bolsonaroPct === null) return null;
+  const finalBolso = bolsonaroPct ?? Number((100 - (lulaPct ?? 50)).toFixed(1));
+  const finalLula = lulaPct ?? Number((100 - finalBolso).toFixed(1));
+  const volumeUsd = ev.volume !== undefined ? Number(ev.volume) : undefined;
+
+  return {
+    lulaPct: finalLula,
+    bolsonaroPct: finalBolso,
+    volumeUsd: Number.isFinite(volumeUsd) ? volumeUsd : undefined,
+    updatedAtISO: new Date().toISOString(),
+    url: POLYMARKET_EVENT_URL
+  };
+}
+
+async function fetchPolymarketViaDoH(): Promise<PolymarketOdds | null> {
+  try {
+    const dohRes = await fetch(
+      'https://cloudflare-dns.com/dns-query?name=gamma-api.polymarket.com&type=A',
+      {
+        headers: { accept: 'application/dns-json' },
+        cache: 'no-store'
+      }
+    );
+    if (!dohRes.ok) return null;
+    const dohJson = (await dohRes.json()) as { Answer?: Array<{ type: number; data: string }> };
+    const ip = dohJson.Answer?.find(a => a.type === 1)?.data;
+    if (!ip) return null;
+
+    const rawText = await new Promise<string>((resolve, reject) => {
+      const req = https.get(
+        {
+          host: ip,
+          servername: 'gamma-api.polymarket.com',
+          path: '/events?slug=brazil-presidential-election',
+          timeout: 1800,
+          headers: {
+            Host: 'gamma-api.polymarket.com',
+            Accept: 'application/json',
+            'User-Agent': 'LadoALado-Eleicoes/2.0'
+          }
+        },
+        res => {
+          if (res.statusCode !== 200) {
+            reject(new Error(`Status ${res.statusCode}`));
+            return;
+          }
+          let body = '';
+          res.on('data', chunk => {
+            body += chunk;
+          });
+          res.on('end', () => resolve(body));
+        }
+      );
+      req.on('error', reject);
+      req.on('timeout', () => {
+        req.destroy();
+        reject(new Error('Timeout'));
+      });
+    });
+
+    return parsePolymarketEvents(JSON.parse(rawText) as PolymarketEventPayload[]);
+  } catch {
+    return null;
+  }
+}
+
+async function getPolymarketOdds(): Promise<PolymarketOdds> {
+  const now = Date.now();
+  if (now - polymarketCache.timestampMs < 15000) {
+    return polymarketCache.data;
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1600);
+    const res = await fetch('https://gamma-api.polymarket.com/events?slug=brazil-presidential-election', {
+      signal: controller.signal,
+      cache: 'no-store',
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'LadoALado-Eleicoes/2.0'
+      }
+    });
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      const events = (await res.json()) as PolymarketEventPayload[];
+      const parsed = parsePolymarketEvents(events);
+      if (parsed) {
+        polymarketCache = { timestampMs: now, data: parsed };
+        return parsed;
+      }
+    }
+  } catch {
+    const dohParsed = await fetchPolymarketViaDoH();
+    if (dohParsed) {
+      polymarketCache = { timestampMs: now, data: dohParsed };
+      return dohParsed;
+    }
+  }
+
+  polymarketCache.timestampMs = now - 10000; // Re-tentar em 5s sem travar
+  return polymarketCache.data;
+}
+
 /**
  * Compara dois snapshots do mesmo escopo (ex: .json vs .jws vs High-Water Mark)
  * e retorna true se `candidate` for mais recente ou igual a `reference`.
@@ -403,9 +573,10 @@ async function fetchLiveMultiUFTurboState(cycle: string, electionCode: string): 
   const paddedCode = electionCode.padStart(6, '0');
   const allScopes = ['br', ...UF_LIST.map(u => u.code)];
 
-  const results = await Promise.all(
-    allScopes.map(scope => fetchDualChannelScope(cycle, electionCode, paddedCode, scope))
-  );
+  const [results, polymarket] = await Promise.all([
+    Promise.all(allScopes.map(scope => fetchDualChannelScope(cycle, electionCode, paddedCode, scope))),
+    getPolymarketOdds()
+  ]);
 
   const rawBr = results[0];
   const ufParsedList = results.slice(1);
@@ -606,6 +777,7 @@ async function fetchLiveMultiUFTurboState(cycle: string, electionCode: string): 
       secoesAdiantadasUF,
       votosAdiantadosUF,
       ufs: ufsResult,
+      polymarket,
       candidatos: aggregatedCandidatos,
       status:
         sumSecoesApuradas >= sumTotalSecoes && sumTotalSecoes > 0
@@ -643,6 +815,7 @@ async function fetchLiveMultiUFTurboState(cycle: string, electionCode: string): 
     secoesAdiantadasUF: 0,
     votosAdiantadosUF: 0,
     ufs: ufsResult.length > 0 ? ufsResult : undefined,
+    polymarket,
     candidatos: primary.candidatos,
     status:
       primary.secoesApuradas >= primary.totalSecoes && primary.totalSecoes > 0
@@ -766,6 +939,7 @@ function generateDemoState2026(searchParams?: URLSearchParams): ElectionState {
     secoesAdiantadasUF: pct > 0 && pct < 100 ? 1842 : 0,
     votosAdiantadosUF: pct > 0 && pct < 100 ? 214590 : 0,
     ufs: demoUFs,
+    polymarket: polymarketCache.data,
     candidatos: rawCandidatos,
     status: pct >= 99.9 ? 'finalizada' : pct > 0 ? 'em_andamento' : 'aguardando',
     origem: 'tse-demo',

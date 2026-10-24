@@ -111,7 +111,7 @@ function mergeMonotonicElectionState(prev: ElectionState | null, incoming: Elect
     }
   }
 
-  // 3. Se o estado nacional anterior já era mais avançado que o incoming, manter o anterior com dataHoraISO atualizada
+  // 3. Se o estado nacional anterior já era mais avançado que o incoming, manter o anterior com dataHoraISO e polymarket atualizados
   if (
     prev.secoesApuradas > incoming.secoesApuradas ||
     (prev.secoesApuradas === incoming.secoesApuradas && prev.totalVotosValidos > incoming.totalVotosValidos)
@@ -119,12 +119,14 @@ function mergeMonotonicElectionState(prev: ElectionState | null, incoming: Elect
     return {
       ...prev,
       dataHoraISO: incoming.dataHoraISO,
+      polymarket: incoming.polymarket || prev.polymarket,
       ufs: mergedUFs || prev.ufs
     };
   }
 
   return {
     ...incoming,
+    polymarket: incoming.polymarket || prev.polymarket,
     ufs: mergedUFs
   };
 }
