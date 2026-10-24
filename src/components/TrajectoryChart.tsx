@@ -128,7 +128,7 @@ export function TrajectoryChart({
 
   const width = 800;
   const height = 195;
-  const padding = { top: 22, right: 110, bottom: 25, left: 35 };
+  const padding = { top: 22, right: 116, bottom: 25, left: 35 };
 
   const plotW = width - padding.left - padding.right;
   const plotH = height - padding.top - padding.bottom;
@@ -136,6 +136,7 @@ export function TrajectoryChart({
   // Candidatos atuais
   const cand1Pct = cand1?.percentual ?? 50.45;
   const cand2Pct = cand2?.percentual ?? 49.55;
+  const hasActive2026Votes = currentPct2026 > 0 && (cand1Pct > 0 || cand2Pct > 0);
 
   const cand1Nome = cand1 ? formatCandidateName(cand1.nome) : '1º Colocado';
   const cand2Nome = cand2 ? formatCandidateName(cand2.nome) : '2º Colocado';
@@ -151,7 +152,7 @@ export function TrajectoryChart({
   // Garantir que o ponto atual exato esteja incluído
   const hasCurrentPoint = validTimeline2026.some(p => Math.abs(p.urnasPct - currentPct2026) < 0.1);
   const pointsToDraw = [...validTimeline2026];
-  if (!hasCurrentPoint && currentPct2026 > 0 && cand1 && cand2) {
+  if (!hasCurrentPoint && hasActive2026Votes && cand1 && cand2) {
     pointsToDraw.push({
       urnasPct: currentPct2026,
       timestamp: '',
@@ -432,37 +433,38 @@ export function TrajectoryChart({
             />
           )}
 
-          {/* Marco discreto da Virada Histórica de 2022 (67,76% · 50,0%) com rótulo no topo fora da área das curvas */}
+          {/* Marco discreto da Virada Histórica de 2022 (67,76% · 50,0%) sem linha vertical duplicada */}
           {timeline2022.length > 0 && (
             <g>
-              <line
-                x1={virada2022X}
-                y1={padding.top}
-                x2={virada2022X}
-                y2={padding.top + plotH}
-                stroke="var(--border)"
-                strokeWidth="1"
-                strokeDasharray="2 3"
-                opacity="0.7"
-              />
               <circle
                 cx={virada2022X}
                 cy={y50}
-                r={hoverPct !== null && Math.abs(hoverPct - 67.76) < 0.2 ? "3.5" : "2.2"}
+                r={hoverPct !== null && Math.abs(hoverPct - 67.76) < 0.2 ? "3.5" : "2.4"}
                 fill="var(--bg)"
                 stroke="var(--fg-subtle)"
                 strokeWidth="1.2"
-                opacity={hoverPct !== null && Math.abs(hoverPct - 67.76) < 0.2 ? 1 : 0.7}
+                opacity={hoverPct !== null && Math.abs(hoverPct - 67.76) < 0.2 ? 1 : 0.75}
               />
               {hoverPct === null && (
-                <text
-                  x={virada2022X}
-                  y={padding.top - 7}
-                  textAnchor="middle"
-                  className="fill-[var(--fg-subtle)] text-[9.5px] font-mono tabular-nums"
-                >
-                  virada 22 (67,8%)
-                </text>
+                <>
+                  <line
+                    x1={virada2022X}
+                    y1={padding.top - 3}
+                    x2={virada2022X}
+                    y2={padding.top + 3}
+                    stroke="var(--fg-subtle)"
+                    strokeWidth="1"
+                    opacity="0.5"
+                  />
+                  <text
+                    x={virada2022X}
+                    y={padding.top - 7}
+                    textAnchor="middle"
+                    className="fill-[var(--fg-subtle)] text-[9.5px] font-mono tabular-nums"
+                  >
+                    virada 22 (67,8%)
+                  </text>
+                </>
               )}
             </g>
           )}
@@ -508,7 +510,7 @@ export function TrajectoryChart({
           ))}
 
           {/* Marcador vertical da posição atual de 2026 */}
-          {currentPct2026 > 0 && (
+          {hasActive2026Votes && (
             <g opacity={hoverPct !== null ? 0.45 : 1}>
               <line
                 x1={currentX}

@@ -238,10 +238,10 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
                 )}
               </div>
 
-              {/* Linha 3: Barra Fina Editorial 2px (único ponto de cor dos partidos) */}
-              <div className="w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden flex gap-[2px]">
+              {/* Linha 3: Barra Fina Editorial 2px com marcação central de 50% */}
+              <div className="relative w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full flex gap-[2px]">
                 <div
-                  className="h-full transition-all duration-500"
+                  className="h-full rounded-l-full transition-all duration-500"
                   style={{
                     width: `${displayLulaPct}%`,
                     backgroundColor: 'var(--color-pt)',
@@ -249,11 +249,15 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
                   }}
                 />
                 <div
-                  className="h-full transition-all duration-500 flex-1"
+                  className="h-full rounded-r-full transition-all duration-500 flex-1"
                   style={{
                     backgroundColor: 'var(--color-pl)',
                     opacity: hasVotes ? 1 : 0.25
                   }}
+                />
+                <span
+                  aria-hidden="true"
+                  className="absolute left-1/2 -top-[2px] h-[6px] w-[1px] bg-[var(--fg-subtle)] opacity-35 pointer-events-none"
                 />
               </div>
 
@@ -312,10 +316,10 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
                 </span>
               </div>
 
-              {/* Barra fina 2px do Estado */}
-              <div className="w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden flex gap-[1px]">
+              {/* Barra fina 2px do Estado com marcação central de 50% */}
+              <div className="relative w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full flex gap-[1px]">
                 <div
-                  className="h-full transition-all duration-500"
+                  className="h-full rounded-l-full transition-all duration-500"
                   style={{
                     width: `${barLula}%`,
                     backgroundColor: 'var(--color-pt)',
@@ -323,11 +327,15 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
                   }}
                 />
                 <div
-                  className="h-full transition-all duration-500 flex-1"
+                  className="h-full rounded-r-full transition-all duration-500 flex-1"
                   style={{
                     backgroundColor: 'var(--color-pl)',
                     opacity: hasVotes ? 1 : 0.25
                   }}
+                />
+                <span
+                  aria-hidden="true"
+                  className="absolute left-1/2 -top-[2px] h-[6px] w-[1px] bg-[var(--fg-subtle)] opacity-35 pointer-events-none"
                 />
               </div>
 

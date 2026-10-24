@@ -103,7 +103,7 @@ export function ComparisonArena({
                   </div>
 
                   <div className="text-right shrink-0">
-                    <div className="font-mono tabular-nums text-4xl sm:text-5xl font-light tracking-tighter text-[var(--fg)]">
+                    <div className="font-mono tabular-nums text-3xl sm:text-4xl font-light tracking-tight text-[var(--fg)]">
                       {lider2026.percentual.toFixed(2)}%
                     </div>
                   </div>
@@ -130,14 +130,19 @@ export function ComparisonArena({
                   )}
                 </div>
 
-                {/* Linha fina com track sutil visível e cor dinâmica do candidato */}
-                <div className="mt-3 w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
+                {/* Linha fina 2px com marcação central de maioria (50%) */}
+                <div className="mt-3 relative w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full">
                   <div
                     className="h-full rounded-full transition-all duration-500 ease-out"
                     style={{
                       width: `${Math.min(100, Math.max(0, lider2026.percentual))}%`,
                       backgroundColor: getCandidateColor(lider2026)
                     }}
+                  />
+                  <span
+                    aria-hidden="true"
+                    title="Marca de 50% dos votos válidos"
+                    className="absolute left-1/2 -top-[2px] h-[6px] w-[1px] bg-[var(--fg-subtle)] opacity-35 pointer-events-none"
                   />
                 </div>
               </div>
@@ -159,7 +164,7 @@ export function ComparisonArena({
                   </div>
 
                   <div className="text-right shrink-0">
-                    <div className="font-mono tabular-nums text-4xl sm:text-5xl font-light tracking-tighter text-[var(--fg)]">
+                    <div className="font-mono tabular-nums text-3xl sm:text-4xl font-light tracking-tight text-[var(--fg)]">
                       {segundo2026.percentual.toFixed(2)}%
                     </div>
                   </div>
@@ -186,14 +191,19 @@ export function ComparisonArena({
                   )}
                 </div>
 
-                {/* Linha fina com track sutil visível e cor dinâmica do candidato */}
-                <div className="mt-3 w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
+                {/* Linha fina 2px com marcação central de maioria (50%) */}
+                <div className="mt-3 relative w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full">
                   <div
                     className="h-full rounded-full transition-all duration-500 ease-out"
                     style={{
                       width: `${Math.min(100, Math.max(0, segundo2026.percentual))}%`,
                       backgroundColor: getCandidateColor(segundo2026)
                     }}
+                  />
+                  <span
+                    aria-hidden="true"
+                    title="Marca de 50% dos votos válidos"
+                    className="absolute left-1/2 -top-[2px] h-[6px] w-[1px] bg-[var(--fg-subtle)] opacity-35 pointer-events-none"
                   />
                 </div>
               </div>
@@ -259,13 +269,18 @@ export function ComparisonArena({
                   <span className="whitespace-nowrap">{pct2022 > 0 ? 'Liderava neste ponto' : 'Aguardando início da apuração'}</span>
                 </div>
 
-                <div className="mt-3 w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
+                <div className="mt-3 relative w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full">
                   <div
-                    className="h-full rounded-full transition-all duration-500 ease-out"
+                    className="h-full rounded-full transition-all duration-500 ease-out opacity-70"
                     style={{
                       width: `${Math.min(100, Math.max(0, lider2022.percentual))}%`,
                       backgroundColor: getCandidateColor(lider2022)
                     }}
+                  />
+                  <span
+                    aria-hidden="true"
+                    title="Marca de 50% dos votos válidos"
+                    className="absolute left-1/2 -top-[2px] h-[6px] w-[1px] bg-[var(--fg-subtle)] opacity-35 pointer-events-none"
                   />
                 </div>
               </div>
@@ -298,13 +313,18 @@ export function ComparisonArena({
                   <span className="whitespace-nowrap">{pct2022 > 0 ? 'Segundo colocado' : 'Aguardando início da apuração'}</span>
                 </div>
 
-                <div className="mt-3 w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
+                <div className="mt-3 relative w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full">
                   <div
-                    className="h-full rounded-full transition-all duration-500 ease-out"
+                    className="h-full rounded-full transition-all duration-500 ease-out opacity-70"
                     style={{
                       width: `${Math.min(100, Math.max(0, segundo2022.percentual))}%`,
                       backgroundColor: getCandidateColor(segundo2022)
                     }}
+                  />
+                  <span
+                    aria-hidden="true"
+                    title="Marca de 50% dos votos válidos"
+                    className="absolute left-1/2 -top-[2px] h-[6px] w-[1px] bg-[var(--fg-subtle)] opacity-35 pointer-events-none"
                   />
                 </div>
               </div>
