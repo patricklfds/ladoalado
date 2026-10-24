@@ -2,35 +2,37 @@
 
 @layer base {
   :root {
-    --bg: #FAFAF8;
-    --fg: #111111;
-    --fg-muted: #52524E;
-    --fg-subtle: #787873;
-    --border: #E5E5E2;
-    --border-subtle: #F0F0EE;
-    --surface: #FFFFFF;
-    --surface-hover: #F5F5F3;
-    --accent: #EAEAE6;
+    --bg: #F8F7F4;
+    --fg: #0C0C0B;
+    --fg-muted: #52514C;
+    --fg-subtle: #787771;
+    --border: #E5E3DC;
+    --border-subtle: #ECEAE3;
+    --surface: #F2F0EB;
+    --surface-hover: #EAE8E1;
+    --accent: #EAE7DF;
+    --track: #E3E1DA;
     
-    /* Cores políticas neutras e institucionais */
-    --color-pt: #C2221F;
+    /* Pigmentos políticos editoriais de alta precisão */
+    --color-pt: #C82320;
     --color-pl: #1D4ED8;
-    --color-positive: #15803D;
+    --color-positive: #137333;
     --color-negative: #B91C1C;
   }
 
   .dark {
-    --bg: #0A0A0B;
+    --bg: #09090B;
     --fg: #F4F4F5;
     --fg-muted: #A1A1AA;
-    --fg-subtle: #82828B;
-    --border: #1E1E22;
-    --border-subtle: #141416;
-    --surface: #111113;
-    --surface-hover: #18181B;
-    --accent: #1C1C20;
+    --fg-subtle: #71717A;
+    --border: #1F1F23;
+    --border-subtle: #151518;
+    --surface: #111114;
+    --surface-hover: #18181C;
+    --accent: #1C1C21;
+    --track: #222227;
     
-    --color-pt: #E03E3E;
+    --color-pt: #E5484D;
     --color-pl: #3B82F6;
     --color-positive: #10B981;
     --color-negative: #F43F5E;
@@ -47,6 +49,7 @@
   --color-surface: var(--surface);
   --color-surface-hover: var(--surface-hover);
   --color-accent: var(--accent);
+  --color-track: var(--track);
   --font-sans: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
@@ -55,6 +58,7 @@ body {
   background-color: var(--bg);
   color: var(--fg);
   font-family: var(--font-sans);
+  font-feature-settings: "ss01" 1, "cv01" 1;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -63,7 +67,16 @@ body {
 /* Números tabulares perfeitos (Zero CLS) */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum" 1;
+  font-feature-settings: "tnum" 1, "zero" 0;
+}
+
+/* Rótulo editorial suíço */
+.editorial-kicker {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-subtle);
 }
 
 /* Linha hairline fina de 1px */

@@ -76,9 +76,10 @@ export default function HomePage() {
 
         {/* Aviso Prévio às 17h quando a apuração ainda não começou */}
         {!isCarregando && estado2026 && secoesPct === 0 && (
-          <div className="my-4 px-3.5 py-2.5 rounded border border-[var(--border)] bg-[var(--surface)] text-xs font-mono text-[var(--fg-muted)] flex items-center justify-between gap-2">
-            <span>
-              Urnas fechadas às 17h00. Aguardando transmissão dos primeiros boletins oficiais pelo TSE.
+          <div className="pt-5 pb-1 flex items-center justify-between gap-2 text-[11px] font-mono text-[var(--fg-subtle)]">
+            <span className="inline-flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500/80 animate-pulse shrink-0" />
+              <span>Urnas fecham às 17h00 (BRT) · Aguardando transmissão dos primeiros boletins oficiais pelo TSE</span>
             </span>
           </div>
         )}

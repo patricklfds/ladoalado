@@ -303,20 +303,20 @@ export function TrajectoryChart({
   const y50 = scaleY(50);
 
   return (
-    <section className="py-8 sm:py-10 border-b border-[var(--border)]">
-      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 mb-4">
+    <section className="py-8 sm:py-11 border-b border-[var(--border)]">
+      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 mb-5">
         <div className="min-w-0">
-          <h3 className="font-semibold text-lg tracking-tight text-[var(--fg)]">
+          <h3 className="font-semibold text-lg sm:text-xl tracking-[-0.025em] text-[var(--fg)]">
             Curva de Apuração
           </h3>
-          <div className="min-h-[2.25rem] sm:min-h-[1.25rem] flex items-center">
+          <div className="min-h-[2.25rem] sm:min-h-[1.35rem] flex items-center mt-0.5">
             {hoverPct !== null && hover2022 ? (
               <p className="text-xs font-mono text-[var(--fg-muted)] tabular-nums leading-snug">
-                <strong className="text-[var(--fg)] font-medium">{hoverPct.toFixed(2)}% das urnas</strong>
+                <strong className="text-[var(--fg)] font-semibold">{hoverPct.toFixed(2)}% das urnas</strong>
                 {' · '}
                 {hover2026 ? (
                   <>
-                    <span>2026: {cand1Nome.split(' ')[0]} {hover2026.p1.toFixed(2)}% vs {cand2Nome.split(' ')[0]} {hover2026.p2.toFixed(2)}%</span>
+                    <span>2026: {cand1Nome.split(' ')[0]} <strong className="text-[var(--fg)] font-medium">{hover2026.p1.toFixed(2)}%</strong> vs {cand2Nome.split(' ')[0]} <strong className="text-[var(--fg)] font-medium">{hover2026.p2.toFixed(2)}%</strong></span>
                     {' · '}
                   </>
                 ) : null}
@@ -331,7 +331,7 @@ export function TrajectoryChart({
               </p>
             ) : (
               <p className="text-xs text-[var(--fg-muted)]">
-                Percentual de votos válidos conforme as urnas são totalizadas
+                Evolução dos votos válidos de 0% a 100% das seções totalizadas
               </p>
             )}
           </div>
@@ -377,13 +377,13 @@ export function TrajectoryChart({
                   y1={y}
                   x2={width - padding.right}
                   y2={y}
-                  stroke="var(--border)"
+                  stroke={is50 ? "var(--fg-subtle)" : "var(--border)"}
                   strokeDasharray={is50 ? "3 3" : "1 4"}
                   strokeWidth={is50 ? "1" : "0.75"}
-                  opacity={is50 ? 0.7 : 0.3}
+                  opacity={is50 ? 0.55 : 0.45}
                 />
                 <text
-                  x={padding.left - 6}
+                  x={padding.left - 7}
                   y={y + 3}
                   textAnchor="end"
                   className={`tabular-nums text-[10px] font-mono ${is50 ? 'fill-[var(--fg)] font-medium' : 'fill-[var(--fg-subtle)]'}`}
@@ -425,9 +425,9 @@ export function TrajectoryChart({
               d={pathLula2022}
               fill="none"
               stroke="var(--color-pt)"
-              strokeWidth="1.2"
-              strokeDasharray="2 2"
-              opacity={hoverPct !== null ? 0.5 : 0.35}
+              strokeWidth="1.25"
+              strokeDasharray="2.5 2.5"
+              opacity={hoverPct !== null ? 0.55 : hasActive2026Votes ? 0.35 : 0.65}
             />
           )}
           {pathBolso2022 && (
@@ -435,10 +435,48 @@ export function TrajectoryChart({
               d={pathBolso2022}
               fill="none"
               stroke="var(--color-pl)"
-              strokeWidth="1.2"
-              strokeDasharray="2 2"
-              opacity={hoverPct !== null ? 0.5 : 0.35}
+              strokeWidth="1.25"
+              strokeDasharray="2.5 2.5"
+              opacity={hoverPct !== null ? 0.55 : hasActive2026Votes ? 0.35 : 0.65}
             />
+          )}
+
+          {/* Rótulos finais de 2022 quando a apuração de 2026 ainda está em 0% */}
+          {!hasActive2026Votes && ptsLula2022.length > 0 && ptsBolso2022.length > 0 && (
+            <g opacity={hoverPct !== null ? 0.35 : 0.75}>
+              <circle
+                cx={scaleX(100)}
+                cy={scaleY(50.9)}
+                r="2.5"
+                fill="var(--bg)"
+                stroke="var(--color-pt)"
+                strokeWidth="1.25"
+              />
+              <text
+                x={scaleX(100) + 6}
+                y={scaleY(50.9) - 2}
+                fill="var(--color-pt)"
+                className="text-[9.5px] font-mono tabular-nums"
+              >
+                50,9% Lula (22)
+              </text>
+              <circle
+                cx={scaleX(100)}
+                cy={scaleY(49.1)}
+                r="2.5"
+                fill="var(--bg)"
+                stroke="var(--color-pl)"
+                strokeWidth="1.25"
+              />
+              <text
+                x={scaleX(100) + 6}
+                y={scaleY(49.1) + 8}
+                fill="var(--color-pl)"
+                className="text-[9.5px] font-mono tabular-nums"
+              >
+                49,1% Bolso. (22)
+              </text>
+            </g>
           )}
 
           {/* Marco discreto da Virada Histórica de 2022 (67,76% · 50,0%) sem linha vertical duplicada */}

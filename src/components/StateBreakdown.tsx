@@ -122,14 +122,14 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
   const visibleUFs = selectedRegiao || showAllUFs ? sortedUFs : sortedUFs.slice(0, 12);
 
   return (
-    <section className="py-8 sm:py-10 border-b border-[var(--border)]">
+    <section className="py-8 sm:py-11 border-b border-[var(--border)]">
       {/* Cabeçalho Editorial da Seção Regional */}
-      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 mb-7">
         <div>
-          <h3 className="font-semibold text-lg tracking-tight text-[var(--fg)]">
+          <h3 className="font-semibold text-lg sm:text-xl tracking-[-0.025em] text-[var(--fg)]">
             Apuração por Região e Estado
           </h3>
-          <p className="text-xs text-[var(--fg-muted)]">
+          <p className="text-xs text-[var(--fg-muted)] mt-0.5">
             Placar regional de 2026 e variação direta em relação ao 2º turno de 2022
           </p>
         </div>
@@ -152,11 +152,11 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
               <span className="text-[var(--border)] mr-1">|</span>
             </>
           )}
-          <span className="text-[11px] text-[var(--fg-subtle)] mr-1">ordenar:</span>
+          <span className="text-[10px] uppercase tracking-[0.08em] text-[var(--fg-subtle)] mr-1">ordenar</span>
           <button
             type="button"
             onClick={() => setSortMode('volume')}
-            className={`px-2.5 py-1.5 rounded transition-colors text-[11px] cursor-pointer ${
+            className={`px-2 py-1 rounded transition-colors text-[11px] cursor-pointer ${
               sortMode === 'volume'
                 ? 'text-[var(--fg)] font-semibold bg-[var(--accent)]'
                 : 'hover:text-[var(--fg)]'
@@ -168,7 +168,7 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
           <button
             type="button"
             onClick={() => setSortMode('faltam')}
-            className={`px-2.5 py-1.5 rounded transition-colors text-[11px] cursor-pointer ${
+            className={`px-2 py-1 rounded transition-colors text-[11px] cursor-pointer ${
               sortMode === 'faltam'
                 ? 'text-[var(--fg)] font-semibold bg-[var(--accent)]'
                 : 'hover:text-[var(--fg)]'
@@ -180,7 +180,7 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
           <button
             type="button"
             onClick={() => setSortMode('apurado')}
-            className={`px-2.5 py-1.5 rounded transition-colors text-[11px] cursor-pointer ${
+            className={`px-2 py-1 rounded transition-colors text-[11px] cursor-pointer ${
               sortMode === 'apurado'
                 ? 'text-[var(--fg)] font-semibold bg-[var(--accent)]'
                 : 'hover:text-[var(--fg)]'
@@ -192,7 +192,7 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
       </div>
 
       {/* 1. Cards das 6 Macro-Regiões (Tipografia Editorial Limpa + Vantagem Relativa vs 2022) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6 mb-10 pb-8 border-b border-[var(--border)]">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-9 gap-y-7 mb-10 pb-8 border-b border-[var(--border)]">
         {regioesSummary.map(r => {
           const hasVotes = r.totalVotosValidos > 0;
           const displayLulaPct = hasVotes ? r.lulaPct : r.lula2022;
@@ -211,7 +211,7 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
             >
               {/* Linha 1: Nome da Região + % Apurado */}
               <div className="flex items-baseline justify-between gap-2 w-full">
-                <span className="font-semibold text-base tracking-tight text-[var(--fg)] group-hover:underline decoration-[var(--border)] underline-offset-4">
+                <span className="font-semibold text-base tracking-[-0.02em] text-[var(--fg)] group-hover:underline decoration-[var(--border)] underline-offset-4">
                   {r.regiao}
                 </span>
                 <span className="font-mono text-[11px] tabular-nums text-[var(--fg-subtle)] whitespace-nowrap">
@@ -219,7 +219,7 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
                 </span>
               </div>
 
-              {/* Linha 2: Placar 2026 em Tipografia Neutra Editorial (sem carnaval de cores no texto) */}
+              {/* Linha 2: Placar 2026 em Tipografia Neutra Editorial */}
               <div className="flex items-baseline justify-between gap-2 font-mono text-xs tabular-nums w-full">
                 {hasVotes ? (
                   <>
@@ -239,25 +239,25 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
               </div>
 
               {/* Linha 3: Barra Fina Editorial 2px com marcação central de 50% */}
-              <div className="relative w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full flex gap-[2px]">
+              <div className="relative w-full h-[2px] bg-[var(--track)] rounded-full flex gap-[2px]">
                 <div
                   className="h-full rounded-l-full transition-all duration-500"
                   style={{
                     width: `${displayLulaPct}%`,
                     backgroundColor: 'var(--color-pt)',
-                    opacity: hasVotes ? 1 : 0.25
+                    opacity: hasVotes ? 1 : 0.3
                   }}
                 />
                 <div
                   className="h-full rounded-r-full transition-all duration-500 flex-1"
                   style={{
                     backgroundColor: 'var(--color-pl)',
-                    opacity: hasVotes ? 1 : 0.25
+                    opacity: hasVotes ? 1 : 0.3
                   }}
                 />
                 <span
                   aria-hidden="true"
-                  className="absolute left-1/2 -top-[2px] h-[6px] w-[1px] bg-[var(--fg-subtle)] opacity-35 pointer-events-none"
+                  className="absolute left-1/2 -top-[2px] h-[6px] w-[1px] bg-[var(--fg-subtle)] opacity-40 pointer-events-none"
                 />
               </div>
 
@@ -283,7 +283,7 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
                     </span>
                   </span>
                 ) : (
-                  <span>aguardando apuração</span>
+                  <span>ref. 22: {r.lula2022.toFixed(1)}% · {r.bolso2022.toFixed(1)}%</span>
                 )}
               </div>
             </button>
@@ -292,7 +292,7 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
       </div>
 
       {/* 2. Grid Espaçado das 28 UFs (3 colunas limpas + Apenas Vantagem Relativa vs 2022) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 font-mono text-xs">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-9 gap-y-4 font-mono text-xs">
         {visibleUFs.map(u => {
           const hasVotes = u.totalVotosValidos > 0;
           const base22 = UF_2022_BASELINE[u.uf] || { lula2022: 50, bolso2022: 50 };
@@ -303,7 +303,7 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
           return (
             <div
               key={u.uf}
-              className="pb-3 border-b border-[var(--border)] flex flex-col justify-between space-y-2"
+              className="pb-3.5 border-b border-[var(--border)] flex flex-col justify-between space-y-2"
             >
               {/* Topo: Sigla + Nome do Estado | % Apurado */}
               <div className="flex items-baseline justify-between gap-2">
@@ -317,25 +317,25 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
               </div>
 
               {/* Barra fina 2px do Estado com marcação central de 50% */}
-              <div className="relative w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full flex gap-[1px]">
+              <div className="relative w-full h-[2px] bg-[var(--track)] rounded-full flex gap-[1px]">
                 <div
                   className="h-full rounded-l-full transition-all duration-500"
                   style={{
                     width: `${barLula}%`,
                     backgroundColor: 'var(--color-pt)',
-                    opacity: hasVotes ? 1 : 0.25
+                    opacity: hasVotes ? 1 : 0.3
                   }}
                 />
                 <div
                   className="h-full rounded-r-full transition-all duration-500 flex-1"
                   style={{
                     backgroundColor: 'var(--color-pl)',
-                    opacity: hasVotes ? 1 : 0.25
+                    opacity: hasVotes ? 1 : 0.3
                   }}
                 />
                 <span
                   aria-hidden="true"
-                  className="absolute left-1/2 -top-[2px] h-[6px] w-[1px] bg-[var(--fg-subtle)] opacity-35 pointer-events-none"
+                  className="absolute left-1/2 -top-[2px] h-[6px] w-[1px] bg-[var(--fg-subtle)] opacity-40 pointer-events-none"
                 />
               </div>
 
@@ -355,7 +355,7 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
                   <span className="text-[var(--fg-subtle)] whitespace-nowrap">0.0% · 0.0%</span>
                 )}
 
-                {hasVotes && (
+                {hasVotes ? (
                   <span className="inline-flex items-center gap-1 text-[var(--fg-subtle)] whitespace-nowrap">
                     {Math.abs(deltaLula) >= 0.05 && (
                       <span
@@ -372,6 +372,10 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
                         ? `+${deltaLula.toFixed(1)}% Lula`
                         : `+${Math.abs(deltaLula).toFixed(1)}% Flávio`}
                     </span>
+                  </span>
+                ) : (
+                  <span className="text-[var(--fg-subtle)] whitespace-nowrap">
+                    22: {base22.lula2022.toFixed(1)}% · {base22.bolso2022.toFixed(1)}%
                   </span>
                 )}
               </div>

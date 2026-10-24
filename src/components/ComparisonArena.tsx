@@ -48,17 +48,17 @@ export function ComparisonArena({
   const polymarket = estado2026?.polymarket;
 
   return (
-    <section className="py-8 sm:py-10 border-b border-[var(--border)]">
+    <section className="py-8 sm:py-11 border-b border-[var(--border)]">
       {/* Grid Principal Lado a Lado */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-9 md:gap-12">
         {/* ================= COLUNA 2026 (HOJE) ================= */}
         <div>
-          <div className="flex items-baseline justify-between gap-2 pb-3 mb-6 border-b border-[var(--border)]">
-            <div className="flex items-baseline gap-2">
-              <h2 className="font-semibold text-xl tracking-tight text-[var(--fg)]">
+          <div className="flex items-baseline justify-between gap-2 pb-3.5 mb-7 border-b border-[var(--border)]">
+            <div className="flex items-baseline gap-2.5">
+              <h2 className="font-semibold text-xl sm:text-2xl tracking-[-0.03em] text-[var(--fg)]">
                 2026
               </h2>
-              <span className="text-xs font-mono text-[var(--fg-muted)]">
+              <span className="text-[11px] font-mono uppercase tracking-[0.1em] text-[var(--fg-muted)]">
                 {estado2026?.status === 'finalizada' ? 'resultado final' : 'ao vivo'}
               </span>
             </div>
@@ -86,30 +86,34 @@ export function ComparisonArena({
             </div>
           </div>
 
-          <div className="space-y-8">
+          <div className="space-y-9">
             {/* 1º Lugar 2026 (Dinâmico) */}
             {lider2026 && (
               <div className="group">
                 <div className="flex items-baseline justify-between gap-4">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2 text-xs font-mono text-[var(--fg-subtle)] mb-1">
+                    <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.08em] text-[var(--fg-subtle)] mb-1">
+                      <span
+                        className="w-1.5 h-1.5 rounded-full shrink-0"
+                        style={{ backgroundColor: getCandidateColor(lider2026) }}
+                      />
                       <span>01</span>
                       <span>·</span>
                       <span>{lider2026.partido}</span>
                     </div>
-                    <h3 className="text-xl sm:text-2xl font-semibold tracking-tight text-[var(--fg)] truncate">
+                    <h3 className="text-xl sm:text-2xl font-semibold tracking-[-0.025em] text-[var(--fg)] truncate">
                       {formatCandidateName(lider2026.nome)}
                     </h3>
                   </div>
 
                   <div className="text-right shrink-0">
-                    <div className="font-mono tabular-nums text-3xl sm:text-4xl font-light tracking-tight text-[var(--fg)]">
+                    <div className="font-mono tabular-nums text-3xl sm:text-[2.6rem] font-light tracking-[-0.04em] leading-none text-[var(--fg)]">
                       {lider2026.percentual.toFixed(2)}%
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] sm:text-xs font-mono tabular-nums text-[var(--fg-muted)]">
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] sm:text-xs font-mono tabular-nums text-[var(--fg-muted)]">
                   <span className="whitespace-nowrap">{lider2026.votos.toLocaleString('pt-BR')} votos</span>
                   {refLider2026 && (
                     hasVotes2026 && hasVotes2022 ? (
@@ -131,7 +135,7 @@ export function ComparisonArena({
                 </div>
 
                 {/* Linha fina 2px com marcação central de maioria (50%) */}
-                <div className="mt-3 relative w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full">
+                <div className="mt-3 relative w-full h-[2px] bg-[var(--track)] rounded-full">
                   <div
                     className="h-full rounded-full transition-all duration-500 ease-out"
                     style={{
@@ -142,7 +146,7 @@ export function ComparisonArena({
                   <span
                     aria-hidden="true"
                     title="Marca de 50% dos votos válidos"
-                    className="absolute left-1/2 -top-[2px] h-[6px] w-[1px] bg-[var(--fg-subtle)] opacity-35 pointer-events-none"
+                    className="absolute left-1/2 -top-[2px] h-[6px] w-[1px] bg-[var(--fg-subtle)] opacity-40 pointer-events-none"
                   />
                 </div>
               </div>
@@ -153,24 +157,28 @@ export function ComparisonArena({
               <div className="group pt-1">
                 <div className="flex items-baseline justify-between gap-4">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2 text-xs font-mono text-[var(--fg-subtle)] mb-1">
+                    <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.08em] text-[var(--fg-subtle)] mb-1">
+                      <span
+                        className="w-1.5 h-1.5 rounded-full shrink-0"
+                        style={{ backgroundColor: getCandidateColor(segundo2026) }}
+                      />
                       <span>02</span>
                       <span>·</span>
                       <span>{segundo2026.partido}</span>
                     </div>
-                    <h3 className="text-xl sm:text-2xl font-semibold tracking-tight text-[var(--fg)] truncate">
+                    <h3 className="text-xl sm:text-2xl font-semibold tracking-[-0.025em] text-[var(--fg)] truncate">
                       {formatCandidateName(segundo2026.nome)}
                     </h3>
                   </div>
 
                   <div className="text-right shrink-0">
-                    <div className="font-mono tabular-nums text-3xl sm:text-4xl font-light tracking-tight text-[var(--fg)]">
+                    <div className="font-mono tabular-nums text-3xl sm:text-[2.6rem] font-light tracking-[-0.04em] leading-none text-[var(--fg)]">
                       {segundo2026.percentual.toFixed(2)}%
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] sm:text-xs font-mono tabular-nums text-[var(--fg-muted)]">
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] sm:text-xs font-mono tabular-nums text-[var(--fg-muted)]">
                   <span className="whitespace-nowrap">{segundo2026.votos.toLocaleString('pt-BR')} votos</span>
                   {refSegundo2026 && (
                     hasVotes2026 && hasVotes2022 ? (
@@ -192,7 +200,7 @@ export function ComparisonArena({
                 </div>
 
                 {/* Linha fina 2px com marcação central de maioria (50%) */}
-                <div className="mt-3 relative w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full">
+                <div className="mt-3 relative w-full h-[2px] bg-[var(--track)] rounded-full">
                   <div
                     className="h-full rounded-full transition-all duration-500 ease-out"
                     style={{
@@ -203,7 +211,7 @@ export function ComparisonArena({
                   <span
                     aria-hidden="true"
                     title="Marca de 50% dos votos válidos"
-                    className="absolute left-1/2 -top-[2px] h-[6px] w-[1px] bg-[var(--fg-subtle)] opacity-35 pointer-events-none"
+                    className="absolute left-1/2 -top-[2px] h-[6px] w-[1px] bg-[var(--fg-subtle)] opacity-40 pointer-events-none"
                   />
                 </div>
               </div>
@@ -213,12 +221,12 @@ export function ComparisonArena({
 
         {/* ================= COLUNA 2022 (HISTÓRICO) ================= */}
         <div className="border-t border-[var(--border)] pt-8 md:border-t-0 md:pt-0 md:border-l md:pl-12">
-          <div className="flex items-baseline justify-between gap-2 pb-3 mb-6 border-b border-[var(--border)]">
-            <div className="flex items-baseline gap-2">
-              <h2 className="font-semibold text-xl tracking-tight text-[var(--fg-muted)]">
+          <div className="flex items-baseline justify-between gap-2 pb-3.5 mb-7 border-b border-[var(--border)]">
+            <div className="flex items-baseline gap-2.5">
+              <h2 className="font-semibold text-xl sm:text-2xl tracking-[-0.03em] text-[var(--fg-muted)]">
                 2022
               </h2>
-              <span className="text-xs font-mono text-[var(--fg-subtle)]">
+              <span className="text-[11px] font-mono uppercase tracking-[0.08em] text-[var(--fg-subtle)]">
                 {modo === 'urnas' ? `atingido às ${estado2022?.timestamp}` : `às ${estado2022?.timestamp}`}
               </span>
             </div>
@@ -241,37 +249,41 @@ export function ComparisonArena({
             </div>
           </div>
 
-          <div className="space-y-8">
+          <div className="space-y-9">
             {/* 1º Lugar 2022 (Dinâmico - reflete a virada histórica) */}
             {lider2022 && (
               <div className="group">
                 <div className="flex items-baseline justify-between gap-4">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2 text-xs font-mono text-[var(--fg-subtle)] mb-1">
+                    <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.08em] text-[var(--fg-subtle)] mb-1">
+                      <span
+                        className="w-1.5 h-1.5 rounded-full shrink-0 opacity-65"
+                        style={{ backgroundColor: getCandidateColor(lider2022) }}
+                      />
                       <span>01</span>
                       <span>·</span>
                       <span>{lider2022.partido}</span>
                     </div>
-                    <h3 className="text-xl sm:text-2xl font-semibold tracking-tight text-[var(--fg-muted)] truncate">
+                    <h3 className="text-xl sm:text-2xl font-semibold tracking-[-0.025em] text-[var(--fg-muted)] truncate">
                       {formatCandidateName(lider2022.nome)}
                     </h3>
                   </div>
 
                   <div className="text-right shrink-0">
-                    <div className="font-mono tabular-nums text-3xl sm:text-4xl font-light tracking-tight text-[var(--fg-muted)]">
+                    <div className="font-mono tabular-nums text-3xl sm:text-[2.6rem] font-light tracking-[-0.04em] leading-none text-[var(--fg-muted)]">
                       {lider2022.percentual.toFixed(2)}%
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] sm:text-xs font-mono tabular-nums text-[var(--fg-subtle)]">
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] sm:text-xs font-mono tabular-nums text-[var(--fg-subtle)]">
                   <span className="whitespace-nowrap">{lider2022.votos.toLocaleString('pt-BR')} votos</span>
                   <span className="whitespace-nowrap">{pct2022 > 0 ? 'Liderava neste ponto' : 'Aguardando início da apuração'}</span>
                 </div>
 
-                <div className="mt-3 relative w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full">
+                <div className="mt-3 relative w-full h-[2px] bg-[var(--track)] rounded-full">
                   <div
-                    className="h-full rounded-full transition-all duration-500 ease-out opacity-70"
+                    className="h-full rounded-full transition-all duration-500 ease-out opacity-65"
                     style={{
                       width: `${Math.min(100, Math.max(0, lider2022.percentual))}%`,
                       backgroundColor: getCandidateColor(lider2022)
@@ -280,7 +292,7 @@ export function ComparisonArena({
                   <span
                     aria-hidden="true"
                     title="Marca de 50% dos votos válidos"
-                    className="absolute left-1/2 -top-[2px] h-[6px] w-[1px] bg-[var(--fg-subtle)] opacity-35 pointer-events-none"
+                    className="absolute left-1/2 -top-[2px] h-[6px] w-[1px] bg-[var(--fg-subtle)] opacity-40 pointer-events-none"
                   />
                 </div>
               </div>
@@ -291,31 +303,35 @@ export function ComparisonArena({
               <div className="group pt-1">
                 <div className="flex items-baseline justify-between gap-4">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2 text-xs font-mono text-[var(--fg-subtle)] mb-1">
+                    <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.08em] text-[var(--fg-subtle)] mb-1">
+                      <span
+                        className="w-1.5 h-1.5 rounded-full shrink-0 opacity-65"
+                        style={{ backgroundColor: getCandidateColor(segundo2022) }}
+                      />
                       <span>02</span>
                       <span>·</span>
                       <span>{segundo2022.partido}</span>
                     </div>
-                    <h3 className="text-xl sm:text-2xl font-semibold tracking-tight text-[var(--fg-muted)] truncate">
+                    <h3 className="text-xl sm:text-2xl font-semibold tracking-[-0.025em] text-[var(--fg-muted)] truncate">
                       {formatCandidateName(segundo2022.nome)}
                     </h3>
                   </div>
 
                   <div className="text-right shrink-0">
-                    <div className="font-mono tabular-nums text-3xl sm:text-4xl font-light tracking-tight text-[var(--fg-muted)]">
+                    <div className="font-mono tabular-nums text-3xl sm:text-[2.6rem] font-light tracking-[-0.04em] leading-none text-[var(--fg-muted)]">
                       {segundo2022.percentual.toFixed(2)}%
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] sm:text-xs font-mono tabular-nums text-[var(--fg-subtle)]">
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] sm:text-xs font-mono tabular-nums text-[var(--fg-subtle)]">
                   <span className="whitespace-nowrap">{segundo2022.votos.toLocaleString('pt-BR')} votos</span>
                   <span className="whitespace-nowrap">{pct2022 > 0 ? 'Segundo colocado' : 'Aguardando início da apuração'}</span>
                 </div>
 
-                <div className="mt-3 relative w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full">
+                <div className="mt-3 relative w-full h-[2px] bg-[var(--track)] rounded-full">
                   <div
-                    className="h-full rounded-full transition-all duration-500 ease-out opacity-70"
+                    className="h-full rounded-full transition-all duration-500 ease-out opacity-65"
                     style={{
                       width: `${Math.min(100, Math.max(0, segundo2022.percentual))}%`,
                       backgroundColor: getCandidateColor(segundo2022)
@@ -324,7 +340,7 @@ export function ComparisonArena({
                   <span
                     aria-hidden="true"
                     title="Marca de 50% dos votos válidos"
-                    className="absolute left-1/2 -top-[2px] h-[6px] w-[1px] bg-[var(--fg-subtle)] opacity-35 pointer-events-none"
+                    className="absolute left-1/2 -top-[2px] h-[6px] w-[1px] bg-[var(--fg-subtle)] opacity-40 pointer-events-none"
                   />
                 </div>
               </div>
@@ -333,16 +349,48 @@ export function ComparisonArena({
         </div>
       </div>
 
+      {/* Síntese Editorial de Vantagem & Comparecimento (exibida assim que houver votos ou estatísticas do TSE) */}
+      {hasVotes2026 && lider2026 && segundo2026 && (
+        <div className="mt-8 pt-4 border-t border-[var(--border-subtle)] flex flex-wrap items-center justify-between gap-x-6 gap-y-2 text-[11px] font-mono tabular-nums text-[var(--fg-subtle)]">
+          <div>
+            <span>Diferença nominal: </span>
+            <strong className="text-[var(--fg)] font-medium">
+              {votosDiff2026.toLocaleString('pt-BR')} votos
+            </strong>
+            <span> para {formatCandidateName(lider2026.nome)}</span>
+          </div>
+          {(estado2026?.votosBrancos !== undefined || estado2026?.votosNulos !== undefined || estado2026?.abstencaoPct !== undefined) && (
+            <div className="flex flex-wrap items-center gap-3">
+              {estado2026?.votosBrancosPct !== undefined && (
+                <span>Brancos {estado2026.votosBrancosPct.toFixed(2)}%</span>
+              )}
+              {estado2026?.votosNulosPct !== undefined && (
+                <>
+                  <span>·</span>
+                  <span>Nulos {estado2026.votosNulosPct.toFixed(2)}%</span>
+                </>
+              )}
+              {estado2026?.abstencaoPct !== undefined && (
+                <>
+                  <span>·</span>
+                  <span>Abstenção {estado2026.abstencaoPct.toFixed(2)}%</span>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Seção Editorial Integrada: Probabilidades no Polymarket (mesma linguagem tipográfica e barras de 2px) */}
       {polymarket && (
-        <div className="mt-10 pt-6 border-t border-[var(--border)] flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="mt-10 pt-7 border-t border-[var(--border)] flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <a
                 href={polymarket.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs font-mono uppercase tracking-widest text-[var(--fg-muted)] hover:text-[var(--fg)] font-medium transition-colors underline decoration-[var(--border)] underline-offset-4"
+                className="text-[11px] font-mono uppercase tracking-[0.12em] text-[var(--fg)] hover:text-[var(--fg-muted)] font-semibold transition-colors underline decoration-[var(--border)] underline-offset-4"
               >
                 Polymarket ↗
               </a>
@@ -399,14 +447,14 @@ export function ComparisonArena({
               return (
                 <div key={item.partido}>
                   <div className="flex items-baseline justify-between gap-2">
-                    <span className={`text-xs sm:text-sm font-medium truncate ${item.isLead ? 'text-[var(--fg)]' : 'text-[var(--fg-muted)]'}`}>
+                    <span className={`text-xs sm:text-sm font-medium tracking-[-0.01em] truncate ${item.isLead ? 'text-[var(--fg)]' : 'text-[var(--fg-muted)]'}`}>
                       {item.nome}
                     </span>
-                    <span className={`font-mono tabular-nums text-lg sm:text-xl font-light tracking-tight ${item.isLead ? 'text-[var(--fg)]' : 'text-[var(--fg-muted)]'}`}>
+                    <span className={`font-mono tabular-nums text-xl sm:text-2xl font-light tracking-[-0.03em] leading-none ${item.isLead ? 'text-[var(--fg)]' : 'text-[var(--fg-muted)]'}`}>
                       {item.pct.toFixed(1)}%
                     </span>
                   </div>
-                  <div className="mt-2 w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
+                  <div className="mt-2.5 w-full h-[2px] bg-[var(--track)] rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all duration-500 ease-out"
                       style={{
@@ -415,7 +463,7 @@ export function ComparisonArena({
                       }}
                     />
                   </div>
-                  <div className="mt-1.5 flex items-center justify-between text-[11px] font-mono tabular-nums">
+                  <div className="mt-2 flex items-center justify-between text-[11px] font-mono tabular-nums">
                     <span className="text-[var(--fg-subtle)]">
                       Variação ({windowLabel})
                     </span>

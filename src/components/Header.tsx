@@ -104,37 +104,39 @@ export function Header({
 
   return (
     <header className="w-full border-b border-[var(--border)] bg-[var(--bg)] transition-colors">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        {/* Marca & Identidade */}
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 sm:py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-6">
+        {/* Marca & Identidade Editorial */}
         <div className="flex items-baseline gap-3">
-          <span className="font-semibold text-lg sm:text-xl tracking-tight text-[var(--fg)]">
+          <span className="font-semibold text-lg sm:text-xl tracking-[-0.03em] text-[var(--fg)]">
             Lado a Lado
           </span>
-          <span className="text-xs font-mono text-[var(--fg-muted)] tracking-wider">
+          <span className="text-[11px] font-mono uppercase tracking-[0.1em] text-[var(--fg-muted)]">
             2026 vs 2022 · 2º Turno
           </span>
           {isDemo && (
-            <span className="text-[10px] font-mono uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">
+            <span className="text-[10px] font-mono uppercase tracking-[0.08em] text-amber-700 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">
               demo
             </span>
           )}
         </div>
 
         {/* Controles de Sincronia e Ao Vivo */}
-        <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-xs">
+        <div className="flex flex-wrap items-center justify-between sm:justify-end gap-3 sm:gap-5 text-xs">
           {/* Seletor Minimalista de Sincronia com Acessibilidade ARIA */}
           <div
             role="group"
             aria-label="Modo de comparação temporal"
-            className="flex items-center gap-1 text-[var(--fg-muted)]"
+            className="flex items-center gap-1 font-mono text-[11px] text-[var(--fg-muted)]"
           >
-            <span className="text-[11px] text-[var(--fg-subtle)] mr-1">modo:</span>
+            <span className="text-[10px] uppercase tracking-[0.08em] text-[var(--fg-subtle)] mr-1">
+              sincronia
+            </span>
             <button
               type="button"
               role="radio"
               aria-checked={modo === 'urnas'}
               onClick={() => setModo('urnas')}
-              className={`px-2.5 py-1.5 rounded transition-colors text-xs font-medium cursor-pointer ${
+              className={`px-2 py-1 rounded transition-colors cursor-pointer ${
                 modo === 'urnas'
                   ? 'text-[var(--fg)] font-semibold bg-[var(--accent)]'
                   : 'hover:text-[var(--fg)]'
@@ -148,7 +150,7 @@ export function Header({
               role="radio"
               aria-checked={modo === 'horario'}
               onClick={() => setModo('horario')}
-              className={`px-2.5 py-1.5 rounded transition-colors text-xs font-medium cursor-pointer ${
+              className={`px-2 py-1 rounded transition-colors cursor-pointer ${
                 modo === 'horario'
                   ? 'text-[var(--fg)] font-semibold bg-[var(--accent)]'
                   : 'hover:text-[var(--fg)]'
@@ -158,77 +160,79 @@ export function Header({
             </button>
           </div>
 
-          {/* Status Ao Vivo / Conexão */}
-          <div className="flex items-center gap-2 font-mono text-[11px] text-[var(--fg-muted)]">
-            <span
-              className={`inline-block w-2 h-2 rounded-full transition-colors ${
-                !isOnline
-                  ? 'bg-rose-500'
-                  : isAtualizando
-                  ? 'bg-amber-400 animate-pulse'
-                  : status2026 === 'finalizada'
-                  ? 'bg-neutral-500'
-                  : 'bg-emerald-500'
-              }`}
-              title={!isOnline ? 'Sem conexão com a internet' : isAtualizando ? 'Sincronizando...' : status2026 === 'finalizada' ? 'Apuração concluída (100%)' : 'Conexão ativa'}
-              aria-hidden="true"
-            />
-            <span className="text-[var(--fg)] font-medium">
-              {!isOnline
-                ? 'offline'
-                : isAtualizando
-                ? 'sincronizando'
-                : status2026 === 'finalizada'
-                ? 'finalizada'
-                : 'ao vivo'}
-            </span>
-            <span>·</span>
-            <span className="tabular-nums">{timestamp2026 || '17:00'}</span>
-            {status2026 !== 'finalizada' && (
-              <>
-                <span>·</span>
-                <span className="tabular-nums" title={`Próxima atualização em ${tempoRestante} segundos`}>
-                  {tempoRestante}s
-                </span>
-              </>
-            )}
-            <button
-              type="button"
-              onClick={handleManualRefresh}
-              disabled={isAtualizando || isSpinning}
-              aria-label="Atualizar dados da apuração agora"
-              title="Atualizar dados agora"
-              className="text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors disabled:opacity-40 p-1.5 inline-flex items-center justify-center cursor-pointer min-w-[28px] min-h-[28px]"
-            >
-              <svg
-                onAnimationIteration={handleAnimationIteration}
-                className={`w-3.5 h-3.5 ${isSpinning ? 'animate-spin' : ''}`}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                style={{ transformOrigin: 'center' }}
+          <div className="flex items-center gap-3.5 sm:gap-4 border-l border-[var(--border)] pl-3.5 sm:pl-5">
+            {/* Status Ao Vivo / Conexão */}
+            <div className="flex items-center gap-1.5 font-mono text-[11px] text-[var(--fg-muted)]">
+              <span
+                className={`inline-block w-1.5 h-1.5 rounded-full transition-colors ${
+                  !isOnline
+                    ? 'bg-rose-500'
+                    : isAtualizando
+                    ? 'bg-amber-400 animate-pulse'
+                    : status2026 === 'finalizada'
+                    ? 'bg-neutral-500'
+                    : 'bg-emerald-500'
+                }`}
+                title={!isOnline ? 'Sem conexão com a internet' : isAtualizando ? 'Sincronizando...' : status2026 === 'finalizada' ? 'Apuração concluída (100%)' : 'Conexão ativa'}
                 aria-hidden="true"
+              />
+              <span className="text-[var(--fg)] font-medium">
+                {!isOnline
+                  ? 'offline'
+                  : isAtualizando
+                  ? 'sincronizando'
+                  : status2026 === 'finalizada'
+                  ? 'finalizada'
+                  : 'ao vivo'}
+              </span>
+              <span className="text-[var(--fg-subtle)]">·</span>
+              <span className="tabular-nums text-[var(--fg)]">{timestamp2026 || '17:00'}</span>
+              {status2026 !== 'finalizada' && (
+                <>
+                  <span className="text-[var(--fg-subtle)]">·</span>
+                  <span className="tabular-nums text-[var(--fg-subtle)]" title={`Próxima atualização em ${tempoRestante} segundos`}>
+                    {tempoRestante}s
+                  </span>
+                </>
+              )}
+              <button
+                type="button"
+                onClick={handleManualRefresh}
+                disabled={isAtualizando || isSpinning}
+                aria-label="Atualizar dados da apuração agora"
+                title="Atualizar dados agora"
+                className="text-[var(--fg-subtle)] hover:text-[var(--fg)] transition-colors disabled:opacity-40 p-1 inline-flex items-center justify-center cursor-pointer"
               >
-                <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
-                <path d="M21 3v5h-5" />
-              </svg>
-            </button>
-          </div>
+                <svg
+                  onAnimationIteration={handleAnimationIteration}
+                  className={`w-3.5 h-3.5 ${isSpinning ? 'animate-spin' : ''}`}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ transformOrigin: 'center' }}
+                  aria-hidden="true"
+                >
+                  <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+                  <path d="M21 3v5h-5" />
+                </svg>
+              </button>
+            </div>
 
-          {/* Tema Claro / Escuro */}
-          {mounted && (
-            <button
-              type="button"
-              onClick={toggleTheme}
-              aria-label={isDark ? 'Alternar para tema claro' : 'Alternar para tema escuro'}
-              className="text-[11px] font-mono text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors border-l border-[var(--border)] pl-4 py-1 cursor-pointer"
-            >
-              {isDark ? 'claro' : 'escuro'}
-            </button>
-          )}
+            {/* Tema Claro / Escuro */}
+            {mounted && (
+              <button
+                type="button"
+                onClick={toggleTheme}
+                aria-label={isDark ? 'Alternar para tema claro' : 'Alternar para tema escuro'}
+                className="text-[11px] font-mono text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors border-l border-[var(--border)] pl-3.5 sm:pl-4 py-0.5 cursor-pointer"
+              >
+                {isDark ? 'claro' : 'escuro'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </header>
