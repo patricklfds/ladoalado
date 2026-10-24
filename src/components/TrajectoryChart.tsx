@@ -295,14 +295,28 @@ export function TrajectoryChart({
 
   return (
     <section className="py-8 sm:py-10 border-b border-[var(--border)]">
-      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 mb-3">
+      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 mb-4">
         <div>
           <h3 className="font-semibold text-lg tracking-tight text-[var(--fg)]">
             Curva de Apuração
           </h3>
-          <p className="text-xs text-[var(--fg-muted)]">
-            Percentual de votos válidos conforme as urnas são totalizadas
-          </p>
+          {hoverPct !== null && hover2022 ? (
+            <p className="text-xs font-mono text-[var(--fg-muted)] tabular-nums">
+              <strong className="text-[var(--fg)] font-medium">{hoverPct.toFixed(2)}% das urnas</strong>
+              {' · '}
+              {hover2026 ? (
+                <>
+                  <span>2026: {cand1Nome.split(' ')[0]} {hover2026.p1.toFixed(2)}% vs {cand2Nome.split(' ')[0]} {hover2026.p2.toFixed(2)}%</span>
+                  {' · '}
+                </>
+              ) : null}
+              <span>2022 ({hover2022.timestamp}): Lula {hover2022.lulaPct.toFixed(2)}% vs Bolsonaro {hover2022.bolsonaroPct.toFixed(2)}%</span>
+            </p>
+          ) : (
+            <p className="text-xs text-[var(--fg-muted)]">
+              Percentual de votos válidos conforme as urnas são totalizadas
+            </p>
+          )}
         </div>
 
         {/* Legenda Dinâmica em Linha */}
@@ -320,41 +334,6 @@ export function TrajectoryChart({
             <span>2022 (referência)</span>
           </div>
         </div>
-      </div>
-
-      {/* Barra de Leitura do Scrubber Interativo */}
-      <div className="mb-3 min-h-[24px] flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono border-b border-[var(--border)] pb-2">
-        {hoverPct !== null && hover2022 ? (
-          <>
-            <div className="flex items-center gap-2 text-[var(--fg)]">
-              <span className="font-semibold tabular-nums">{hoverPct.toFixed(2)}% das urnas</span>
-              <span className="text-[var(--fg-subtle)]">·</span>
-              <span className="text-[var(--fg-muted)]">
-                2022 às <strong className="text-[var(--fg)] font-medium">{hover2022.timestamp}</strong>
-                {Math.abs(hoverPct - 67.76) < 0.1 ? ' (virada histórica)' : ''}
-              </span>
-            </div>
-            <div className="flex flex-wrap items-center gap-3 tabular-nums">
-              {hover2026 && (
-                <span className="text-[var(--fg)]">
-                  <span className="text-[var(--fg-subtle)]">2026:</span>{' '}
-                  <strong style={{ color: cand1Cor }}>{cand1Nome.split(' ')[0]} {hover2026.p1.toFixed(2)}%</strong>
-                  {' · '}
-                  <strong style={{ color: cand2Cor }}>{cand2Nome.split(' ')[0]} {hover2026.p2.toFixed(2)}%</strong>
-                </span>
-              )}
-              <span className="text-[var(--fg-muted)]">
-                <span className="text-[var(--fg-subtle)]">2022:</span>{' '}
-                Lula {hover2022.lulaPct.toFixed(2)}% · Bolsonaro {hover2022.bolsonaroPct.toFixed(2)}%
-              </span>
-            </div>
-          </>
-        ) : (
-          <div className="w-full flex items-center justify-between text-[var(--fg-subtle)]">
-            <span>Passe o cursor ou deslize sobre o gráfico para inspecionar qualquer ponto da apuração</span>
-            <span className="hidden sm:inline">Virada em 2022: 67,76% (18h44)</span>
-          </div>
-        )}
       </div>
 
       <div className="w-full overflow-x-auto">

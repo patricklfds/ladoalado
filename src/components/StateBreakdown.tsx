@@ -129,7 +129,7 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
             Apuração por Região e Estado
           </h3>
           <p className="text-xs text-[var(--fg-muted)]">
-            Desempenho regional em 2026 comparado ao resultado oficial do 2º turno de 2022
+            Placar regional de 2026 e variação direta em relação ao 2º turno de 2022
           </p>
         </div>
 
@@ -178,40 +178,34 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
         </div>
       </div>
 
-      {/* 1. Cards das 6 Macro-Regiões (Layout Cabo de Guerra sem quebra de linha + Comparação 2022) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+      {/* 1. Cards das 6 Macro-Regiões (Tipografia Editorial Limpa + Vantagem Relativa vs 2022) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6 mb-10 pb-8 border-b border-[var(--border)]">
         {regioesSummary.map(r => {
           const hasVotes = r.totalVotosValidos > 0;
           const displayLulaPct = hasVotes ? r.lulaPct : r.lula2022;
+          const lulaLeads = r.lulaPct >= r.bolsonaroPct;
 
           return (
-            <div
-              key={r.regiao}
-              className="p-4 rounded border border-[var(--border)] bg-[var(--surface)] flex flex-col justify-between gap-2.5"
-            >
+            <div key={r.regiao} className="flex flex-col justify-between space-y-2.5">
               {/* Linha 1: Nome da Região + % Apurado */}
               <div className="flex items-baseline justify-between gap-2">
-                <span className="font-semibold text-sm text-[var(--fg)]">{r.regiao}</span>
-                <span className="font-mono text-xs tabular-nums text-[var(--fg-muted)] whitespace-nowrap">
-                  <strong className="text-[var(--fg)] font-medium">{r.secoesPct.toFixed(2)}%</strong> apurado
+                <span className="font-semibold text-base tracking-tight text-[var(--fg)]">
+                  {r.regiao}
+                </span>
+                <span className="font-mono text-[11px] tabular-nums text-[var(--fg-subtle)] whitespace-nowrap">
+                  {r.secoesPct.toFixed(2)}% apurado
                 </span>
               </div>
 
-              {/* Linha 2: Placar 2026 em Linha Dedicada (Zero Transbordamento) */}
+              {/* Linha 2: Placar 2026 em Tipografia Neutra Editorial (sem carnaval de cores no texto) */}
               <div className="flex items-baseline justify-between gap-2 font-mono text-xs tabular-nums">
                 {hasVotes ? (
                   <>
-                    <span className="whitespace-nowrap">
-                      <span className="font-sans text-[var(--fg-muted)]">Lula</span>{' '}
-                      <strong className="font-semibold" style={{ color: 'var(--color-pt)' }}>
-                        {r.lulaPct.toFixed(1)}%
-                      </strong>
+                    <span className={`whitespace-nowrap ${lulaLeads ? 'text-[var(--fg)] font-medium' : 'text-[var(--fg-muted)]'}`}>
+                      <span className="font-sans">Lula</span> {r.lulaPct.toFixed(1)}%
                     </span>
-                    <span className="whitespace-nowrap">
-                      <strong className="font-semibold" style={{ color: 'var(--color-pl)' }}>
-                        {r.bolsonaroPct.toFixed(1)}%
-                      </strong>{' '}
-                      <span className="font-sans text-[var(--fg-muted)]">Flávio</span>
+                    <span className={`whitespace-nowrap ${!lulaLeads ? 'text-[var(--fg)] font-medium' : 'text-[var(--fg-muted)]'}`}>
+                      {r.bolsonaroPct.toFixed(1)}% <span className="font-sans">Flávio</span>
                     </span>
                   </>
                 ) : (
@@ -222,52 +216,48 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
                 )}
               </div>
 
-              {/* Linha 3: Barra Cabo de Guerra Proporcional */}
-              <div className="w-full h-1.5 bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden flex gap-[2px]">
+              {/* Linha 3: Barra Fina Editorial 2px (único ponto de cor dos partidos) */}
+              <div className="w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden flex gap-[2px]">
                 <div
                   className="h-full transition-all duration-500"
                   style={{
                     width: `${displayLulaPct}%`,
                     backgroundColor: 'var(--color-pt)',
-                    opacity: hasVotes ? 1 : 0.3
+                    opacity: hasVotes ? 1 : 0.25
                   }}
                 />
                 <div
                   className="h-full transition-all duration-500 flex-1"
                   style={{
                     backgroundColor: 'var(--color-pl)',
-                    opacity: hasVotes ? 1 : 0.3
+                    opacity: hasVotes ? 1 : 0.25
                   }}
                 />
               </div>
 
-              {/* Linha 4: Comparativo 2022 + Variação / Seções */}
-              <div className="pt-0.5 flex items-center justify-between gap-2 text-[11px] font-mono tabular-nums text-[var(--fg-subtle)]">
-                <span className="whitespace-nowrap">
-                  2022: L {r.lula2022.toFixed(1)}% · B {r.bolso2022.toFixed(1)}%
-                </span>
+              {/* Linha 4: Apenas a Vantagem Relativa vs 2022 */}
+              <div className="flex items-center justify-between gap-2 text-[11px] font-mono tabular-nums text-[var(--fg-subtle)]">
+                <span>vs. 2º turno 2022</span>
                 {hasVotes ? (
-                  <span
-                    className="whitespace-nowrap font-medium"
-                    style={{
-                      color:
-                        Math.abs(r.deltaLula) < 0.05
-                          ? 'var(--fg-subtle)'
-                          : r.deltaLula > 0
-                          ? 'var(--color-pt)'
-                          : 'var(--color-pl)'
-                    }}
-                  >
-                    {Math.abs(r.deltaLula) < 0.05
-                      ? '= 2022'
-                      : r.deltaLula > 0
-                      ? `+${r.deltaLula.toFixed(1)}% Lula vs 22`
-                      : `+${Math.abs(r.deltaLula).toFixed(1)}% Flávio vs 22`}
+                  <span className="inline-flex items-center gap-1.5 text-[var(--fg-muted)] whitespace-nowrap">
+                    {Math.abs(r.deltaLula) >= 0.05 && (
+                      <span
+                        className="w-1.5 h-1.5 rounded-full"
+                        style={{
+                          backgroundColor: r.deltaLula > 0 ? 'var(--color-pt)' : 'var(--color-pl)'
+                        }}
+                      />
+                    )}
+                    <span>
+                      {Math.abs(r.deltaLula) < 0.05
+                        ? 'estável (0.0%)'
+                        : r.deltaLula > 0
+                        ? `+${r.deltaLula.toFixed(1)}% Lula`
+                        : `+${Math.abs(r.deltaLula).toFixed(1)}% Flávio`}
+                    </span>
                   </span>
                 ) : (
-                  <span className="whitespace-nowrap">
-                    {r.totalSecoes.toLocaleString('pt-BR')} seções
-                  </span>
+                  <span>aguardando apuração</span>
                 )}
               </div>
             </div>
@@ -275,18 +265,19 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
         })}
       </div>
 
-      {/* 2. Grid Espaçado das 28 UFs (3 colunas no desktop para leitura limpa + Comparativo 2022) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-3.5 font-mono text-xs">
+      {/* 2. Grid Espaçado das 28 UFs (3 colunas limpas + Apenas Vantagem Relativa vs 2022) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 font-mono text-xs">
         {visibleUFs.map(u => {
           const hasVotes = u.totalVotosValidos > 0;
           const base22 = UF_2022_BASELINE[u.uf] || { lula2022: 50, bolso2022: 50 };
           const deltaLula = Number((u.lulaPct - base22.lula2022).toFixed(1));
           const barLula = hasVotes ? u.lulaPct : base22.lula2022;
+          const lulaLeads = u.lulaPct >= u.bolsonaroPct;
 
           return (
             <div
               key={u.uf}
-              className="py-2.5 border-b border-[var(--border)] flex flex-col justify-between gap-1.5"
+              className="pb-3 border-b border-[var(--border)] flex flex-col justify-between space-y-2"
             >
               {/* Topo: Sigla + Nome do Estado | % Apurado */}
               <div className="flex items-baseline justify-between gap-2">
@@ -294,8 +285,8 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
                   <span className="font-semibold text-[var(--fg)]">{u.uf}</span>
                   <span className="text-xs font-sans text-[var(--fg-muted)] truncate">{u.nome}</span>
                 </div>
-                <span className="tabular-nums text-[11px] text-[var(--fg-muted)] whitespace-nowrap shrink-0">
-                  <strong className="text-[var(--fg)] font-medium">{u.secoesTotalizadasPct.toFixed(2)}%</strong> apurado
+                <span className="tabular-nums text-[11px] text-[var(--fg-subtle)] whitespace-nowrap shrink-0">
+                  {u.secoesTotalizadasPct.toFixed(2)}%
                 </span>
               </div>
 
@@ -318,47 +309,41 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
                 />
               </div>
 
-              {/* Base: Placar 2026 | Referência 2022 */}
+              {/* Base: Placar 2026 em tipografia neutra | Apenas Vantagem Relativa vs 2022 */}
               <div className="flex items-center justify-between gap-2 text-[11px] tabular-nums">
                 {hasVotes ? (
-                  <span className="whitespace-nowrap">
-                    <span style={{ color: 'var(--color-pt)' }} className="font-medium">
+                  <span className="whitespace-nowrap text-[var(--fg-muted)]">
+                    <span className={lulaLeads ? 'text-[var(--fg)] font-medium' : ''}>
                       Lula {u.lulaPct.toFixed(1)}%
                     </span>
                     <span className="text-[var(--fg-subtle)]">{' · '}</span>
-                    <span style={{ color: 'var(--color-pl)' }} className="font-medium">
+                    <span className={!lulaLeads ? 'text-[var(--fg)] font-medium' : ''}>
                       Flávio {u.bolsonaroPct.toFixed(1)}%
                     </span>
                   </span>
                 ) : (
-                  <span className="text-[var(--fg-subtle)] whitespace-nowrap">Aguardando boletins</span>
+                  <span className="text-[var(--fg-subtle)] whitespace-nowrap">0.0% · 0.0%</span>
                 )}
 
-                <span className="text-[var(--fg-subtle)] whitespace-nowrap">
-                  {hasVotes ? (
-                    <>
-                      <span>22: {base22.lula2022.toFixed(1)}%</span>
-                      {' ('}
+                {hasVotes && (
+                  <span className="inline-flex items-center gap-1 text-[var(--fg-subtle)] whitespace-nowrap">
+                    {Math.abs(deltaLula) >= 0.05 && (
                       <span
+                        className="w-1.5 h-1.5 rounded-full"
                         style={{
-                          color:
-                            Math.abs(deltaLula) < 0.05
-                              ? 'var(--fg-subtle)'
-                              : deltaLula > 0
-                              ? 'var(--color-pt)'
-                              : 'var(--color-pl)'
+                          backgroundColor: deltaLula > 0 ? 'var(--color-pt)' : 'var(--color-pl)'
                         }}
-                      >
-                        {deltaLula >= 0 ? `+${deltaLula.toFixed(1)}% L` : `+${Math.abs(deltaLula).toFixed(1)}% B`}
-                      </span>
-                      {')'}
-                    </>
-                  ) : (
+                      />
+                    )}
                     <span>
-                      2022: L {base22.lula2022.toFixed(1)}% · B {base22.bolso2022.toFixed(1)}%
+                      {Math.abs(deltaLula) < 0.05
+                        ? '= 22'
+                        : deltaLula > 0
+                        ? `+${deltaLula.toFixed(1)}% L vs 22`
+                        : `+${Math.abs(deltaLula).toFixed(1)}% B vs 22`}
                     </span>
-                  )}
-                </span>
+                  </span>
+                )}
               </div>
             </div>
           );
