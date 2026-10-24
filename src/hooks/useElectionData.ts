@@ -94,9 +94,16 @@ function mergeMonotonicElectionState(prev: ElectionState | null, incoming: Elect
       }
 
       const secoesTotalizadasPct = computeClientPrecisePct(sumSecoesApuradas, sumTotalSecoes, sumVotosValidos);
+      const status =
+        sumSecoesApuradas >= sumTotalSecoes && sumTotalSecoes > 0
+          ? 'finalizada'
+          : secoesTotalizadasPct > 0
+            ? 'em_andamento'
+            : 'aguardando';
 
       return {
         ...incoming,
+        status,
         secoesTotalizadasPct,
         totalSecoes: sumTotalSecoes,
         secoesApuradas: sumSecoesApuradas,
@@ -378,7 +385,7 @@ export function useElectionData() {
     if (modo === 'urnas') {
       point2022 = interpolateByUrnas(timeline2022, estado2026.secoesTotalizadasPct);
     } else {
-      point2022 = findByTime(timeline2022, estado2026.timestamp.slice(0, 5));
+      point2022 = findByTime(timeline2022, estado2026.timestamp.slice(0, 5), estado2026.secoesTotalizadasPct);
     }
 
     matching2022State = point2022ToElectionState(point2022);

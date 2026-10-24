@@ -105,10 +105,18 @@ function smoothSvgPath(points: Array<{ x: number; y: number }>, tension = 0.75):
     const p2 = points[i + 1];
     const p3 = i < points.length - 2 ? points[i + 2] : { x: 2 * points[points.length - 1].x - points[points.length - 2].x, y: 2 * points[points.length - 1].y - points[points.length - 2].y };
 
-    const cp1x = p1.x + ((p2.x - p0.x) / 6) * tension;
-    const cp1y = p1.y + ((p2.y - p0.y) / 6) * tension;
-    const cp2x = p2.x - ((p3.x - p1.x) / 6) * tension;
-    const cp2y = p2.y - ((p3.y - p1.y) / 6) * tension;
+    const dx = Math.max(0, p2.x - p1.x);
+    const rawCp1x = p1.x + ((p2.x - p0.x) / 6) * tension;
+    const rawCp2x = p2.x - ((p3.x - p1.x) / 6) * tension;
+
+    // Clamping estrito de X dentro do segmento [p1.x, p2.x] para impedir laços horizontais em pontos de densidade desigual
+    const cp1x = Math.min(p1.x + dx * 0.5, Math.max(p1.x, rawCp1x));
+    const cp2x = Math.max(p2.x - dx * 0.5, Math.min(p2.x, rawCp2x));
+
+    const minY = Math.min(p0.y, p1.y, p2.y, p3.y);
+    const maxY = Math.max(p0.y, p1.y, p2.y, p3.y);
+    const cp1y = Math.min(maxY, Math.max(minY, p1.y + ((p2.y - p0.y) / 6) * tension));
+    const cp2y = Math.min(maxY, Math.max(minY, p2.y - ((p3.y - p1.y) / 6) * tension));
 
     path += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
   }

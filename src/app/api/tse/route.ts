@@ -97,7 +97,11 @@ const DEFAULT_ELECTION_CYCLE = process.env.NEXT_PUBLIC_TSE_ELECTION_CYCLE || 'el
 
 function parseTSEFloat(value: string | undefined): number {
   if (!value) return 0;
-  const parsed = Number(value.replace('.', '').replace(',', '.'));
+  const trimmed = value.trim();
+  const normalized = trimmed.includes(',')
+    ? trimmed.replace(/\./g, '').replace(',', '.')
+    : trimmed;
+  const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
@@ -132,11 +136,18 @@ function computePreciseSecoesPct(secoesApuradas: number, totalSecoes: number, to
   return rounded;
 }
 
-// Rate Limiter em memória (comporta polling turbo de 5s + cliques manuais com ampla margem)
+// Rate Limiter em memória (comporta polling turbo de 5s + múltiplos usuários na mesma rede CGNAT/Wi-Fi)
 const ipRequestCounts = new Map<string, { count: number; resetTime: number }>();
 
-function isRateLimited(ip: string, maxRequests = 400, windowMs = 60000): boolean {
+function isRateLimited(ip: string, maxRequests = 1500, windowMs = 60000): boolean {
   const now = Date.now();
+  if (ipRequestCounts.size > 5000) {
+    for (const [k, v] of ipRequestCounts.entries()) {
+      if (now > v.resetTime) {
+        ipRequestCounts.delete(k);
+      }
+    }
+  }
   const record = ipRequestCounts.get(ip);
   if (!record || now > record.resetTime) {
     ipRequestCounts.set(ip, { count: 1, resetTime: now + windowMs });
@@ -162,7 +173,7 @@ function recordTimelinePoint(
       candMap[c.nome.toUpperCase().trim()] = c.percentual;
     });
 
-    const existingIdx = list.findIndex(p => Math.abs(p.urnasPct - urnasPct) < 0.05);
+    const existingIdx = list.findIndex(p => Math.abs(p.urnasPct - urnasPct) < 0.15);
     if (existingIdx >= 0) {
       list[existingIdx] = {
         urnasPct,
@@ -272,7 +283,7 @@ function parsePolymarketEvents(events: PolymarketEventPayload[]): PolymarketOdds
       yesPrice = Number(m.lastTradePrice);
     }
 
-    if (!Number.isFinite(yesPrice) || yesPrice <= 0) continue;
+    if (!Number.isFinite(yesPrice) || yesPrice < 0 || yesPrice > 1) continue;
     const pct = Number((yesPrice * 100).toFixed(1));
     const chg1h = m.oneHourPriceChange !== undefined ? Number((Number(m.oneHourPriceChange) * 100).toFixed(1)) : null;
     const chg24h = m.oneDayPriceChange !== undefined ? Number((Number(m.oneDayPriceChange) * 100).toFixed(1)) : null;
@@ -289,6 +300,7 @@ function parsePolymarketEvents(events: PolymarketEventPayload[]): PolymarketOdds
   }
 
   if (lulaPct === null && bolsonaroPct === null) return null;
+  if ((lulaPct ?? 0) <= 0 && (bolsonaroPct ?? 0) <= 0) return null;
   const finalBolso = bolsonaroPct ?? Number((100 - (lulaPct ?? 50)).toFixed(1));
   const finalLula = lulaPct ?? Number((100 - finalBolso).toFixed(1));
   const volumeUsd = ev.volume !== undefined ? Number(ev.volume) : undefined;
@@ -535,15 +547,22 @@ function parseTSEPayloadToScope(scope: string, tseData: TSEPayload): ParsedScope
     totalVotosValidos = parseTSEInt(tseData.vscv as string);
     totalVotosComparecimento = totalVotosValidos;
     secoesTotalizadasPct = computePreciseSecoesPct(secoesApuradas, totalSecoes, totalVotosValidos);
+  }
 
-    (tseData.cand || []).forEach((c: TSECandNode, idx: number) => {
+  if (candidatos.length === 0 && Array.isArray(tseData.cand)) {
+    tseData.cand.forEach((c: TSECandNode, idx: number) => {
+      const votos = parseTSEInt(c.vap);
+      const pct =
+        totalVotosValidos > 0
+          ? Number(((votos / totalVotosValidos) * 100).toFixed(2))
+          : parseTSEFloat(c.pvap);
       const candObj: CandidateResult = {
         id: `cand-${c.n || idx}`,
-        nome: (c.nm || 'CANDIDATO').slice(0, 40),
+        nome: (c.nmu || c.nm || 'CANDIDATO').slice(0, 40),
         numero: c.n || String(idx + 1),
         partido: cleanPartyName(c.cc),
-        votos: parseTSEInt(c.vap),
-        percentual: parseTSEFloat(c.pvap),
+        votos,
+        percentual: pct,
         posicao: parseInt(c.seq || '1', 10) || (idx + 1),
         cor: ''
       };

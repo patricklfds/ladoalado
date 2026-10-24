@@ -193,7 +193,8 @@ export function interpolateByUrnas(
  */
 export function findByTime(
   timeline: TimelinePoint2022[],
-  timeString: string
+  timeString: string,
+  urnasPct2026 = 100
 ): TimelinePoint2022 {
   if (!timeline || timeline.length === 0) {
     throw new Error('Timeline 2022 vazia.');
@@ -207,7 +208,12 @@ export function findByTime(
   const mins = parseInt(parts[1], 10);
   if (isNaN(rawHours) || isNaN(mins)) return timeline[0];
 
-  // Se o horário for de madrugada (00h–05h), considerar continuação da noite pós-17h
+  // Se ainda estamos em 0% de urnas apuradas e o arquivo foi gerado antes das 17h (ex: Zerésima da madrugada), retornar início (17:00)
+  if (urnasPct2026 <= 0 && rawHours < 17) {
+    return timeline[0];
+  }
+
+  // Se o horário for de madrugada (00h–05h) após o início da apuração, considerar continuação da noite pós-17h
   const adjustedHours = rawHours < 6 ? rawHours + 24 : rawHours;
   const targetMinutes = adjustedHours * 60 + mins;
   const startMinutes = 17 * 60; // 17:00
