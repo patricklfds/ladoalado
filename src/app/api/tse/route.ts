@@ -123,33 +123,40 @@ function isRateLimited(ip: string, maxRequests = 300, windowMs = 60000): boolean
   return record.count > maxRequests;
 }
 
-// Buffer histórico em memória para traçar a evolução real das urnas do 2º Turno de 2026 ao longo do tempo
-const historicalTimeline2026: TimelinePoint2026[] = [];
+// Buffer histórico em memória isolado por código de pleito (impede que testes em outros pleitos contaminem o 6258)
+const historicalTimelineByCode = new Map<string, TimelinePoint2026[]>();
 
-function recordTimelinePoint(urnasPct: number, timestamp: string, candidatos: CandidateResult[]): TimelinePoint2026[] {
+function recordTimelinePoint(
+  electionCode: string,
+  urnasPct: number,
+  timestamp: string,
+  candidatos: CandidateResult[]
+): TimelinePoint2026[] {
+  const list = historicalTimelineByCode.get(electionCode) || [];
   if (urnasPct > 0 && candidatos.length > 0) {
     const candMap: Record<string, number> = {};
     candidatos.forEach(c => {
       candMap[c.nome.toUpperCase().trim()] = c.percentual;
     });
 
-    const existingIdx = historicalTimeline2026.findIndex(p => Math.abs(p.urnasPct - urnasPct) < 0.05);
+    const existingIdx = list.findIndex(p => Math.abs(p.urnasPct - urnasPct) < 0.05);
     if (existingIdx >= 0) {
-      historicalTimeline2026[existingIdx] = {
+      list[existingIdx] = {
         urnasPct,
         timestamp,
-        candidatos: { ...historicalTimeline2026[existingIdx].candidatos, ...candMap }
+        candidatos: { ...list[existingIdx].candidatos, ...candMap }
       };
     } else {
-      historicalTimeline2026.push({
+      list.push({
         urnasPct,
         timestamp,
         candidatos: candMap
       });
-      historicalTimeline2026.sort((a, b) => a.urnasPct - b.urnasPct);
+      list.sort((a, b) => a.urnasPct - b.urnasPct);
     }
+    historicalTimelineByCode.set(electionCode, list);
   }
-  return [...historicalTimeline2026];
+  return [...list];
 }
 
 interface ParsedScopeData {
@@ -293,7 +300,8 @@ async function fetchScopePayload(
           `https://resultados.tse.jus.br/oficial/${cycle}/${electionCode}/dados/br/br-c0001-e${paddedCode}-u.jws`
         ]
       : [
-          `https://resultados.tse.jus.br/oficial/${cycle}/${electionCode}/dados/${scope}/${scope}-c0001-e${paddedCode}-u.json`
+          `https://resultados.tse.jus.br/oficial/${cycle}/${electionCode}/dados/${scope}/${scope}-c0001-e${paddedCode}-u.json`,
+          `https://resultados.tse.jus.br/oficial/${cycle}/${electionCode}/dados/${scope}/${scope}-c0001-e${paddedCode}-u.jws`
         ];
 
   for (const url of urls) {
@@ -362,7 +370,7 @@ async function fetchLiveMultiUFTurboState(cycle: string, electionCode: string): 
     for (const meta of UF_LIST) {
       ufHighWaterMark.delete(`${electionCode}:${meta.code}`);
     }
-    historicalTimeline2026.length = 0;
+    historicalTimelineByCode.delete(electionCode);
   }
 
   // Atualizar High-Water Mark de cada UF
@@ -522,7 +530,7 @@ async function fetchLiveMultiUFTurboState(cycle: string, electionCode: string): 
     const secoesAdiantadasUF = Math.max(0, sumSecoesApuradas - brSecoesApuradas);
     const votosAdiantadosUF = Math.max(0, sumVotosValidos - brVotosValidos);
 
-    const timeline2026 = recordTimelinePoint(secoesTotalizadasPct, effectiveTimestamp, aggregatedCandidatos);
+    const timeline2026 = recordTimelinePoint(electionCode, secoesTotalizadasPct, effectiveTimestamp, aggregatedCandidatos);
 
     return {
       ano: 2026,
@@ -550,7 +558,7 @@ async function fetchLiveMultiUFTurboState(cycle: string, electionCode: string): 
 
   // Fallback para o consolidado BR caso alguma UF tenha falhado no cold start e BR esteja mais adiantado
   const primary = brParsed!;
-  const timeline2026 = recordTimelinePoint(primary.secoesTotalizadasPct, primary.timestamp, primary.candidatos);
+  const timeline2026 = recordTimelinePoint(electionCode, primary.secoesTotalizadasPct, primary.timestamp, primary.candidatos);
 
   return {
     ano: 2026,
