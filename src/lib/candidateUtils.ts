@@ -129,7 +129,7 @@ export function getHistoricalReference(
     if (ref) {
       const refPct = Number.isFinite(ref.percentual) ? ref.percentual : 0;
       return {
-        label: 'vs Lula 2022',
+        label: 'vs Lula 22',
         percentual: refPct,
         delta: Number((pct2026 - refPct).toFixed(2))
       };
@@ -142,7 +142,7 @@ export function getHistoricalReference(
     if (ref) {
       const refPct = Number.isFinite(ref.percentual) ? ref.percentual : 0;
       return {
-        label: 'vs Jair Bolsonaro 2022',
+        label: 'vs Bolsonaro 22',
         percentual: refPct,
         delta: Number((pct2026 - refPct).toFixed(2))
       };

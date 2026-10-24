@@ -85,7 +85,12 @@ export function point2022ToElectionState(point: TimelinePoint2022): ElectionStat
     secoesApuradas: point.secoesApuradas,
     totalVotosValidos: point.totalVotosValidos,
     candidatos,
-    status: point.secoesTotalizadasPct >= 99.9 ? 'finalizada' : point.secoesTotalizadasPct > 0 ? 'em_andamento' : 'aguardando',
+    status:
+      point.secoesTotalizadasPct >= 100
+        ? 'finalizada'
+        : point.secoesTotalizadasPct > 0
+        ? 'em_andamento'
+        : 'aguardando',
     origem: 'historico-2022'
   };
 }
@@ -130,12 +135,17 @@ export function interpolateByUrnas(
   // Fração de interpolação t entre p1 e p2
   const t = (clampedPct - p1.secoesTotalizadasPct) / (p2.secoesTotalizadasPct - p1.secoesTotalizadasPct);
 
-  const lulaPct = Number((p1.lulaPct + (p2.lulaPct - p1.lulaPct) * t).toFixed(2));
+  // Quando p1 é o marco zero (0% de urnas, 0/0 votos), o share percentual inicial real vem do primeiro boletim com votos (p2)
+  const p1HasVotes = p1.secoesTotalizadasPct > 0 && (p1.lulaPct > 0 || p1.bolsonaroPct > 0);
+  const startLulaPct = p1HasVotes ? p1.lulaPct : p2.lulaPct;
+  const startBolsoPct = p1HasVotes ? p1.bolsonaroPct : p2.bolsonaroPct;
+
+  const lulaPct = Number((startLulaPct + (p2.lulaPct - startLulaPct) * t).toFixed(2));
   const isSecondRound = p1.tebetPct === 0 && p2.tebetPct === 0 && p1.ciroPct === 0 && p2.ciroPct === 0 && p1.outrosPct === 0 && p2.outrosPct === 0;
 
   const bolsonaroPct = isSecondRound
     ? Number(Math.max(0, 100 - lulaPct).toFixed(2))
-    : Number((p1.bolsonaroPct + (p2.bolsonaroPct - p1.bolsonaroPct) * t).toFixed(2));
+    : Number((startBolsoPct + (p2.bolsonaroPct - startBolsoPct) * t).toFixed(2));
   const tebetPct = isSecondRound ? 0 : Number((p1.tebetPct + (p2.tebetPct - p1.tebetPct) * t).toFixed(2));
   const ciroPct = isSecondRound ? 0 : Number((p1.ciroPct + (p2.ciroPct - p1.ciroPct) * t).toFixed(2));
   const outrosPct = isSecondRound ? 0 : Number(Math.max(0, 100 - (lulaPct + bolsonaroPct + tebetPct + ciroPct)).toFixed(2));
@@ -147,8 +157,8 @@ export function interpolateByUrnas(
   const m = Math.floor(totalMin % 60);
   const formattedTime = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
 
-  const secoesApuradas = Math.round((clampedPct / 100) * p1.totalSecoes);
-  const totalVotosValidos = Math.round((clampedPct / 100) * 118552353);
+  const secoesApuradas = clampedPct > 0 ? Math.max(1, Math.round((clampedPct / 100) * p1.totalSecoes)) : 0;
+  const totalVotosValidos = clampedPct > 0 ? Math.max(1, Math.round((clampedPct / 100) * 118552353)) : 0;
 
   const lulaVotos = Math.round((lulaPct / 100) * totalVotosValidos);
   const bolsonaroVotos = isSecondRound

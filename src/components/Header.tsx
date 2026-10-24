@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useSyncExternalStore } from 'react';
-import type { ComparisonMode } from '@/lib/types';
+import type { ComparisonMode, ElectionStatus } from '@/lib/types';
 
 interface HeaderProps {
   modo: ComparisonMode;
@@ -11,6 +11,7 @@ interface HeaderProps {
   isAtualizando: boolean;
   recarregarAgora: () => void;
   isDemo?: boolean;
+  status2026?: ElectionStatus;
 }
 
 // Hook idiomático e sem re-render desnecessário para detectar hidratação no cliente
@@ -29,7 +30,8 @@ export function Header({
   tempoRestante,
   isAtualizando,
   recarregarAgora,
-  isDemo = false
+  isDemo = false,
+  status2026
 }: HeaderProps) {
   const mounted = useIsMounted();
   const [isDark, setIsDark] = useState<boolean>(() => {
@@ -164,20 +166,32 @@ export function Header({
                   ? 'bg-rose-500'
                   : isAtualizando
                   ? 'bg-amber-400 animate-pulse'
+                  : status2026 === 'finalizada'
+                  ? 'bg-neutral-500'
                   : 'bg-emerald-500'
               }`}
-              title={!isOnline ? 'Sem conexão com a internet' : isAtualizando ? 'Sincronizando...' : 'Conexão ativa'}
+              title={!isOnline ? 'Sem conexão com a internet' : isAtualizando ? 'Sincronizando...' : status2026 === 'finalizada' ? 'Apuração concluída (100%)' : 'Conexão ativa'}
               aria-hidden="true"
             />
             <span className="text-[var(--fg)] font-medium">
-              {!isOnline ? 'offline' : isAtualizando ? 'sincronizando' : 'ao vivo'}
+              {!isOnline
+                ? 'offline'
+                : isAtualizando
+                ? 'sincronizando'
+                : status2026 === 'finalizada'
+                ? 'finalizada'
+                : 'ao vivo'}
             </span>
             <span>·</span>
-            <span>{timestamp2026 || '18:48'}</span>
-            <span>·</span>
-            <span className="tabular-nums" title={`Próxima atualização em ${tempoRestante} segundos`}>
-              {tempoRestante}s
-            </span>
+            <span className="tabular-nums">{timestamp2026 || '17:00'}</span>
+            {status2026 !== 'finalizada' && (
+              <>
+                <span>·</span>
+                <span className="tabular-nums" title={`Próxima atualização em ${tempoRestante} segundos`}>
+                  {tempoRestante}s
+                </span>
+              </>
+            )}
             <button
               type="button"
               onClick={handleManualRefresh}

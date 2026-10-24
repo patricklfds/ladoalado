@@ -49,6 +49,7 @@ export default function HomePage() {
         isAtualizando={isAtualizando}
         recarregarAgora={recarregarAgora}
         isDemo={isDemo}
+        status2026={estado2026?.status}
       />
 
       {/* 2. Conteúdo Centralizado com Amplo Respiro Editorial */}

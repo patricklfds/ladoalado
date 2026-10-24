@@ -63,6 +63,7 @@ const UF_2022_BASELINE: Record<string, { lula2022: number; bolso2022: number }> 
 export function StateBreakdown({ ufs }: StateBreakdownProps) {
   const [sortMode, setSortMode] = useState<SortMode>('volume');
   const [showAllUFs, setShowAllUFs] = useState<boolean>(false);
+  const [selectedRegiao, setSelectedRegiao] = useState<MacroRegiao | null>(null);
 
   const regioesSummary = useMemo(() => {
     if (!ufs || ufs.length === 0) return [];
@@ -105,20 +106,20 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
 
   const sortedUFs = useMemo(() => {
     if (!ufs || ufs.length === 0) return [];
-    const copy = [...ufs];
+    const filtered = selectedRegiao ? ufs.filter(u => u.regiao === selectedRegiao) : [...ufs];
     if (sortMode === 'faltam') {
-      copy.sort((a, b) => (b.totalSecoes - b.secoesApuradas) - (a.totalSecoes - a.secoesApuradas));
+      filtered.sort((a, b) => (b.totalSecoes - b.secoesApuradas) - (a.totalSecoes - a.secoesApuradas));
     } else if (sortMode === 'apurado') {
-      copy.sort((a, b) => (b.secoesTotalizadasPct - a.secoesTotalizadasPct) || (b.totalSecoes - a.totalSecoes));
+      filtered.sort((a, b) => (b.secoesTotalizadasPct - a.secoesTotalizadasPct) || (b.totalSecoes - a.totalSecoes));
     } else {
-      copy.sort((a, b) => b.totalSecoes - a.totalSecoes);
+      filtered.sort((a, b) => b.totalSecoes - a.totalSecoes);
     }
-    return copy;
-  }, [ufs, sortMode]);
+    return filtered;
+  }, [ufs, sortMode, selectedRegiao]);
 
   if (!ufs || ufs.length === 0) return null;
 
-  const visibleUFs = showAllUFs ? sortedUFs : sortedUFs.slice(0, 12);
+  const visibleUFs = selectedRegiao || showAllUFs ? sortedUFs : sortedUFs.slice(0, 12);
 
   return (
     <section className="py-8 sm:py-10 border-b border-[var(--border)]">
@@ -137,13 +138,25 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
         <div
           role="group"
           aria-label="Ordenar estados por"
-          className="flex items-center gap-1 text-xs font-mono text-[var(--fg-muted)]"
+          className="flex flex-wrap items-center gap-1 text-xs font-mono text-[var(--fg-muted)]"
         >
+          {selectedRegiao && (
+            <>
+              <button
+                type="button"
+                onClick={() => setSelectedRegiao(null)}
+                className="px-2 py-1 rounded bg-[var(--accent)] text-[var(--fg)] font-semibold text-[11px] cursor-pointer mr-1"
+              >
+                {selectedRegiao} ×
+              </button>
+              <span className="text-[var(--border)] mr-1">|</span>
+            </>
+          )}
           <span className="text-[11px] text-[var(--fg-subtle)] mr-1">ordenar:</span>
           <button
             type="button"
             onClick={() => setSortMode('volume')}
-            className={`px-2 py-1 rounded transition-colors text-[11px] cursor-pointer ${
+            className={`px-2.5 py-1.5 rounded transition-colors text-[11px] cursor-pointer ${
               sortMode === 'volume'
                 ? 'text-[var(--fg)] font-semibold bg-[var(--accent)]'
                 : 'hover:text-[var(--fg)]'
@@ -155,7 +168,7 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
           <button
             type="button"
             onClick={() => setSortMode('faltam')}
-            className={`px-2 py-1 rounded transition-colors text-[11px] cursor-pointer ${
+            className={`px-2.5 py-1.5 rounded transition-colors text-[11px] cursor-pointer ${
               sortMode === 'faltam'
                 ? 'text-[var(--fg)] font-semibold bg-[var(--accent)]'
                 : 'hover:text-[var(--fg)]'
@@ -167,7 +180,7 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
           <button
             type="button"
             onClick={() => setSortMode('apurado')}
-            className={`px-2 py-1 rounded transition-colors text-[11px] cursor-pointer ${
+            className={`px-2.5 py-1.5 rounded transition-colors text-[11px] cursor-pointer ${
               sortMode === 'apurado'
                 ? 'text-[var(--fg)] font-semibold bg-[var(--accent)]'
                 : 'hover:text-[var(--fg)]'
@@ -184,12 +197,21 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
           const hasVotes = r.totalVotosValidos > 0;
           const displayLulaPct = hasVotes ? r.lulaPct : r.lula2022;
           const lulaLeads = r.lulaPct >= r.bolsonaroPct;
+          const isSelected = selectedRegiao === r.regiao;
+          const isDimmed = selectedRegiao !== null && !isSelected;
 
           return (
-            <div key={r.regiao} className="flex flex-col justify-between space-y-2.5">
+            <button
+              key={r.regiao}
+              type="button"
+              onClick={() => setSelectedRegiao(prev => (prev === r.regiao ? null : r.regiao))}
+              className={`text-left flex flex-col justify-between space-y-2.5 transition-opacity cursor-pointer group ${
+                isDimmed ? 'opacity-45 hover:opacity-80' : 'opacity-100'
+              }`}
+            >
               {/* Linha 1: Nome da Região + % Apurado */}
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="font-semibold text-base tracking-tight text-[var(--fg)]">
+              <div className="flex items-baseline justify-between gap-2 w-full">
+                <span className="font-semibold text-base tracking-tight text-[var(--fg)] group-hover:underline decoration-[var(--border)] underline-offset-4">
                   {r.regiao}
                 </span>
                 <span className="font-mono text-[11px] tabular-nums text-[var(--fg-subtle)] whitespace-nowrap">
@@ -198,7 +220,7 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
               </div>
 
               {/* Linha 2: Placar 2026 em Tipografia Neutra Editorial (sem carnaval de cores no texto) */}
-              <div className="flex items-baseline justify-between gap-2 font-mono text-xs tabular-nums">
+              <div className="flex items-baseline justify-between gap-2 font-mono text-xs tabular-nums w-full">
                 {hasVotes ? (
                   <>
                     <span className={`whitespace-nowrap ${lulaLeads ? 'text-[var(--fg)] font-medium' : 'text-[var(--fg-muted)]'}`}>
@@ -236,7 +258,7 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
               </div>
 
               {/* Linha 4: Apenas a Vantagem Relativa vs 2022 */}
-              <div className="flex items-center justify-between gap-2 text-[11px] font-mono tabular-nums text-[var(--fg-subtle)]">
+              <div className="flex items-center justify-between gap-2 text-[11px] font-mono tabular-nums text-[var(--fg-subtle)] w-full">
                 <span>vs. 2º turno 2022</span>
                 {hasVotes ? (
                   <span className="inline-flex items-center gap-1.5 text-[var(--fg-muted)] whitespace-nowrap">
@@ -260,7 +282,7 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
                   <span>aguardando apuração</span>
                 )}
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
@@ -337,10 +359,10 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
                     )}
                     <span>
                       {Math.abs(deltaLula) < 0.05
-                        ? '= 22'
+                        ? '0.0% vs 22'
                         : deltaLula > 0
-                        ? `+${deltaLula.toFixed(1)}% L vs 22`
-                        : `+${Math.abs(deltaLula).toFixed(1)}% B vs 22`}
+                        ? `+${deltaLula.toFixed(1)}% Lula`
+                        : `+${Math.abs(deltaLula).toFixed(1)}% Flávio`}
                     </span>
                   </span>
                 )}
@@ -351,12 +373,12 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
       </div>
 
       {/* Botão para expandir/recolher todas as 28 UFs */}
-      {sortedUFs.length > 12 && (
+      {!selectedRegiao && sortedUFs.length > 12 && (
         <div className="mt-5 text-center">
           <button
             type="button"
             onClick={() => setShowAllUFs(prev => !prev)}
-            className="text-xs font-mono text-[var(--fg-muted)] hover:text-[var(--fg)] underline hover:no-underline cursor-pointer py-1 px-3"
+            className="text-xs font-mono text-[var(--fg-muted)] hover:text-[var(--fg)] underline hover:no-underline cursor-pointer py-1.5 px-3"
           >
             {showAllUFs
               ? 'Recolher lista de estados (mostrar top 12)'

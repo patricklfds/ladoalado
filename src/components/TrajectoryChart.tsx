@@ -296,31 +296,40 @@ export function TrajectoryChart({
   return (
     <section className="py-8 sm:py-10 border-b border-[var(--border)]">
       <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 mb-4">
-        <div>
+        <div className="min-w-0">
           <h3 className="font-semibold text-lg tracking-tight text-[var(--fg)]">
             Curva de Apuração
           </h3>
-          {hoverPct !== null && hover2022 ? (
-            <p className="text-xs font-mono text-[var(--fg-muted)] tabular-nums">
-              <strong className="text-[var(--fg)] font-medium">{hoverPct.toFixed(2)}% das urnas</strong>
-              {' · '}
-              {hover2026 ? (
-                <>
-                  <span>2026: {cand1Nome.split(' ')[0]} {hover2026.p1.toFixed(2)}% vs {cand2Nome.split(' ')[0]} {hover2026.p2.toFixed(2)}%</span>
-                  {' · '}
-                </>
-              ) : null}
-              <span>2022 ({hover2022.timestamp}): Lula {hover2022.lulaPct.toFixed(2)}% vs Bolsonaro {hover2022.bolsonaroPct.toFixed(2)}%</span>
-            </p>
-          ) : (
-            <p className="text-xs text-[var(--fg-muted)]">
-              Percentual de votos válidos conforme as urnas são totalizadas
-            </p>
-          )}
+          <div className="min-h-[2.25rem] sm:min-h-[1.25rem] flex items-center">
+            {hoverPct !== null && hover2022 ? (
+              <p className="text-xs font-mono text-[var(--fg-muted)] tabular-nums leading-snug">
+                <strong className="text-[var(--fg)] font-medium">{hoverPct.toFixed(2)}% das urnas</strong>
+                {' · '}
+                {hover2026 ? (
+                  <>
+                    <span>2026: {cand1Nome.split(' ')[0]} {hover2026.p1.toFixed(2)}% vs {cand2Nome.split(' ')[0]} {hover2026.p2.toFixed(2)}%</span>
+                    {' · '}
+                  </>
+                ) : null}
+                <span>2022 ({hover2022.timestamp}): Lula {hover2022.lulaPct.toFixed(2)}% vs Bolsonaro {hover2022.bolsonaroPct.toFixed(2)}%</span>
+                <button
+                  type="button"
+                  onClick={() => setHoverPct(null)}
+                  className="ml-2 sm:hidden text-[11px] underline text-[var(--fg-subtle)] hover:text-[var(--fg)] cursor-pointer"
+                >
+                  limpar
+                </button>
+              </p>
+            ) : (
+              <p className="text-xs text-[var(--fg-muted)]">
+                Percentual de votos válidos conforme as urnas são totalizadas
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Legenda Dinâmica em Linha */}
-        <div className="flex flex-wrap items-center gap-4 text-[11px] font-mono text-[var(--fg-muted)]">
+        <div className="flex flex-wrap items-center gap-4 text-[11px] font-mono text-[var(--fg-muted)] shrink-0">
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-[2px] rounded-full" style={{ backgroundColor: cand1Cor }} />
             <span className="text-[var(--fg)]">{cand1Nome}</span>
@@ -336,7 +345,7 @@ export function TrajectoryChart({
         </div>
       </div>
 
-      <div className="w-full overflow-x-auto">
+      <div className="w-full">
         <svg
           ref={svgRef}
           role="img"
@@ -346,8 +355,7 @@ export function TrajectoryChart({
           onMouseLeave={() => setHoverPct(null)}
           onTouchStart={handleTouchMove}
           onTouchMove={handleTouchMove}
-          onTouchEnd={() => setHoverPct(null)}
-          className="w-full h-auto min-w-[550px] overflow-visible select-none cursor-crosshair touch-pan-y"
+          className="w-full h-auto overflow-visible select-none cursor-crosshair touch-pan-y"
         >
           {/* Marcadores e Linhas Guia do Eixo Y */}
           {yTicks.map((val) => {
@@ -424,17 +432,39 @@ export function TrajectoryChart({
             />
           )}
 
-          {/* Marco discreto da Virada Histórica de 2022 (67,76% · 50,0%) sem texto sobreposto */}
+          {/* Marco discreto da Virada Histórica de 2022 (67,76% · 50,0%) com rótulo no topo fora da área das curvas */}
           {timeline2022.length > 0 && (
-            <circle
-              cx={virada2022X}
-              cy={y50}
-              r={hoverPct !== null && Math.abs(hoverPct - 67.76) < 0.2 ? "3.5" : "2.2"}
-              fill="var(--bg)"
-              stroke="var(--fg-subtle)"
-              strokeWidth="1.2"
-              opacity={hoverPct !== null && Math.abs(hoverPct - 67.76) < 0.2 ? 1 : 0.6}
-            />
+            <g>
+              <line
+                x1={virada2022X}
+                y1={padding.top}
+                x2={virada2022X}
+                y2={padding.top + plotH}
+                stroke="var(--border)"
+                strokeWidth="1"
+                strokeDasharray="2 3"
+                opacity="0.7"
+              />
+              <circle
+                cx={virada2022X}
+                cy={y50}
+                r={hoverPct !== null && Math.abs(hoverPct - 67.76) < 0.2 ? "3.5" : "2.2"}
+                fill="var(--bg)"
+                stroke="var(--fg-subtle)"
+                strokeWidth="1.2"
+                opacity={hoverPct !== null && Math.abs(hoverPct - 67.76) < 0.2 ? 1 : 0.7}
+              />
+              {hoverPct === null && (
+                <text
+                  x={virada2022X}
+                  y={padding.top - 7}
+                  textAnchor="middle"
+                  className="fill-[var(--fg-subtle)] text-[9.5px] font-mono tabular-nums"
+                >
+                  virada 22 (67,8%)
+                </text>
+              )}
+            </g>
           )}
 
           {/* Curvas 2026 (Sólidas com cores dinâmicas dos candidatos 1º e 2º) */}

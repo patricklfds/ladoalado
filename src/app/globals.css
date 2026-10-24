@@ -4,13 +4,13 @@
   :root {
     --bg: #FAFAF8;
     --fg: #111111;
-    --fg-muted: #737373;
-    --fg-subtle: #999999;
-    --border: #E8E8E6;
+    --fg-muted: #52524E;
+    --fg-subtle: #787873;
+    --border: #E5E5E2;
     --border-subtle: #F0F0EE;
     --surface: #FFFFFF;
     --surface-hover: #F5F5F3;
-    --accent: #EFEFEc;
+    --accent: #EAEAE6;
     
     /* Cores políticas neutras e institucionais */
     --color-pt: #C2221F;
@@ -23,7 +23,7 @@
     --bg: #0A0A0B;
     --fg: #F4F4F5;
     --fg-muted: #A1A1AA;
-    --fg-subtle: #71717A;
+    --fg-subtle: #82828B;
     --border: #1E1E22;
     --border-subtle: #141416;
     --surface: #111113;

@@ -33,11 +33,15 @@ export function ComparisonArena({
 
   const pct2026 = estado2026?.secoesTotalizadasPct ?? 0;
   const pct2022 = estado2022?.secoesTotalizadasPct ?? 0;
+  const hasVotes2026 = (estado2026?.totalVotosValidos ?? 0) > 0 && pct2026 > 0;
+  const hasVotes2022 = (estado2022?.totalVotosValidos ?? 0) > 0 && pct2022 > 0;
 
   const lider2026 = cands2026[0];
   const segundo2026 = cands2026[1];
   const lider2022 = cands2022[0];
   const segundo2022 = cands2022[1];
+
+  const votosDiff2026 = lider2026 && segundo2026 ? Math.max(0, lider2026.votos - segundo2026.votos) : 0;
 
   const refLider2026 = getHistoricalReference(lider2026, cands2022);
   const refSegundo2026 = getHistoricalReference(segundo2026, cands2022);
@@ -49,67 +53,80 @@ export function ComparisonArena({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
         {/* ================= COLUNA 2026 (HOJE) ================= */}
         <div>
-          <div className="flex items-baseline justify-between pb-3 mb-6 border-b border-[var(--border)]">
+          <div className="flex items-baseline justify-between gap-2 pb-3 mb-6 border-b border-[var(--border)]">
             <div className="flex items-baseline gap-2">
               <h2 className="font-semibold text-xl tracking-tight text-[var(--fg)]">
                 2026
               </h2>
               <span className="text-xs font-mono text-[var(--fg-muted)]">
-                ao vivo
+                {estado2026?.status === 'finalizada' ? 'resultado final' : 'ao vivo'}
               </span>
             </div>
-            <div className="text-right font-mono text-xs">
-              {lider2026 && margem2026 > 0 ? (
-                <span>
-                  <span className="font-semibold text-[var(--fg)]">{formatCandidateName(lider2026.nome)}</span>{' '}
-                  <span className="text-[var(--fg-muted)]">lidera</span>{' '}
-                  <span className="font-semibold tabular-nums text-[var(--fg)]">+{margem2026.toFixed(2)}%</span>
-                </span>
+            <div className="text-right font-mono text-xs tabular-nums">
+              {hasVotes2026 && lider2026 ? (
+                margem2026 > 0 ? (
+                  <span>
+                    <span className="font-semibold text-[var(--fg)]">{formatCandidateName(lider2026.nome)}</span>{' '}
+                    <span className="text-[var(--fg-muted)]">lidera</span>{' '}
+                    <span className="font-semibold text-[var(--fg)]">+{margem2026.toFixed(2)}%</span>
+                  </span>
+                ) : votosDiff2026 > 0 ? (
+                  <span>
+                    <span className="font-semibold text-[var(--fg)]">{formatCandidateName(lider2026.nome)}</span>{' '}
+                    <span className="text-[var(--fg-muted)]">+{votosDiff2026.toLocaleString('pt-BR')} votos</span>
+                  </span>
+                ) : (
+                  <span className="text-[var(--fg-muted)]">Empate exato (50,00%)</span>
+                )
               ) : (
                 <span className="text-xs font-mono tabular-nums text-[var(--fg-muted)]">
-                  {estado2026?.secoesTotalizadasPct.toFixed(2)}% apurado
+                  {pct2026.toFixed(2)}% apurado
                 </span>
               )}
             </div>
           </div>
 
-          <div className="space-y-7">
+          <div className="space-y-8">
             {/* 1º Lugar 2026 (Dinâmico) */}
             {lider2026 && (
               <div className="group">
                 <div className="flex items-baseline justify-between gap-4">
-                  <div>
+                  <div className="min-w-0">
                     <div className="flex items-center gap-2 text-xs font-mono text-[var(--fg-subtle)] mb-1">
                       <span>01</span>
                       <span>·</span>
                       <span>{lider2026.partido}</span>
                     </div>
-                    <h3 className="text-xl sm:text-2xl font-semibold tracking-tight text-[var(--fg)]">
+                    <h3 className="text-xl sm:text-2xl font-semibold tracking-tight text-[var(--fg)] truncate">
                       {formatCandidateName(lider2026.nome)}
                     </h3>
                   </div>
 
-                  <div className="text-right">
-                    <div className="font-mono tabular-nums text-3xl sm:text-4xl font-light tracking-tight text-[var(--fg)]">
+                  <div className="text-right shrink-0">
+                    <div className="font-mono tabular-nums text-4xl sm:text-5xl font-light tracking-tighter text-[var(--fg)]">
                       {lider2026.percentual.toFixed(2)}%
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-2 flex items-center justify-between text-xs font-mono text-[var(--fg-muted)]">
-                  <span>{lider2026.votos.toLocaleString('pt-BR')} votos</span>
+                <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] sm:text-xs font-mono tabular-nums text-[var(--fg-muted)]">
+                  <span className="whitespace-nowrap">{lider2026.votos.toLocaleString('pt-BR')} votos</span>
                   {refLider2026 && (
-                    <span
-                      className={
-                        pct2026 === 0 && refLider2026.delta === 0
-                          ? 'text-[var(--fg-subtle)]'
-                          : refLider2026.delta >= 0
-                          ? 'text-[var(--color-positive)] font-medium'
-                          : 'text-[var(--color-negative)] font-medium'
-                      }
-                    >
-                      {refLider2026.delta >= 0 ? `+${refLider2026.delta.toFixed(2)}%` : `${refLider2026.delta.toFixed(2)}%`} {refLider2026.label} ({refLider2026.percentual.toFixed(2)}%)
-                    </span>
+                    hasVotes2026 && hasVotes2022 ? (
+                      <span
+                        className={`whitespace-nowrap ${
+                          refLider2026.delta >= 0
+                            ? 'text-[var(--color-positive)] font-medium'
+                            : 'text-[var(--color-negative)] font-medium'
+                        }`}
+                      >
+                        {refLider2026.delta >= 0 ? `+${refLider2026.delta.toFixed(2)}%` : `${refLider2026.delta.toFixed(2)}%`} {refLider2026.label} ({refLider2026.percentual.toFixed(2)}%)
+                      </span>
+                    ) : (
+                      <span className="whitespace-nowrap text-[var(--fg-subtle)]">
+                        {hasVotes2022 ? `ref. 2022: ${refLider2026.percentual.toFixed(2)}%` : 'aguardando 1ª urna'}
+                      </span>
+                    )
                   )}
                 </div>
 
@@ -130,38 +147,42 @@ export function ComparisonArena({
             {segundo2026 && (
               <div className="group pt-1">
                 <div className="flex items-baseline justify-between gap-4">
-                  <div>
+                  <div className="min-w-0">
                     <div className="flex items-center gap-2 text-xs font-mono text-[var(--fg-subtle)] mb-1">
                       <span>02</span>
                       <span>·</span>
                       <span>{segundo2026.partido}</span>
                     </div>
-                    <h3 className="text-xl sm:text-2xl font-semibold tracking-tight text-[var(--fg)]">
+                    <h3 className="text-xl sm:text-2xl font-semibold tracking-tight text-[var(--fg)] truncate">
                       {formatCandidateName(segundo2026.nome)}
                     </h3>
                   </div>
 
-                  <div className="text-right">
-                    <div className="font-mono tabular-nums text-3xl sm:text-4xl font-light tracking-tight text-[var(--fg)]">
+                  <div className="text-right shrink-0">
+                    <div className="font-mono tabular-nums text-4xl sm:text-5xl font-light tracking-tighter text-[var(--fg)]">
                       {segundo2026.percentual.toFixed(2)}%
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-2 flex items-center justify-between text-xs font-mono text-[var(--fg-muted)]">
-                  <span>{segundo2026.votos.toLocaleString('pt-BR')} votos</span>
+                <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] sm:text-xs font-mono tabular-nums text-[var(--fg-muted)]">
+                  <span className="whitespace-nowrap">{segundo2026.votos.toLocaleString('pt-BR')} votos</span>
                   {refSegundo2026 && (
-                    <span
-                      className={
-                        pct2026 === 0 && refSegundo2026.delta === 0
-                          ? 'text-[var(--fg-subtle)]'
-                          : refSegundo2026.delta >= 0
-                          ? 'text-[var(--color-positive)] font-medium'
-                          : 'text-[var(--color-negative)] font-medium'
-                      }
-                    >
-                      {refSegundo2026.delta >= 0 ? `+${refSegundo2026.delta.toFixed(2)}%` : `${refSegundo2026.delta.toFixed(2)}%`} {refSegundo2026.label} ({refSegundo2026.percentual.toFixed(2)}%)
-                    </span>
+                    hasVotes2026 && hasVotes2022 ? (
+                      <span
+                        className={`whitespace-nowrap ${
+                          refSegundo2026.delta >= 0
+                            ? 'text-[var(--color-positive)] font-medium'
+                            : 'text-[var(--color-negative)] font-medium'
+                        }`}
+                      >
+                        {refSegundo2026.delta >= 0 ? `+${refSegundo2026.delta.toFixed(2)}%` : `${refSegundo2026.delta.toFixed(2)}%`} {refSegundo2026.label} ({refSegundo2026.percentual.toFixed(2)}%)
+                      </span>
+                    ) : (
+                      <span className="whitespace-nowrap text-[var(--fg-subtle)]">
+                        {hasVotes2022 ? `ref. 2022: ${refSegundo2026.percentual.toFixed(2)}%` : 'aguardando 1ª urna'}
+                      </span>
+                    )
                   )}
                 </div>
 
@@ -181,8 +202,8 @@ export function ComparisonArena({
         </div>
 
         {/* ================= COLUNA 2022 (HISTÓRICO) ================= */}
-        <div className="md:border-l md:border-[var(--border)] md:pl-12">
-          <div className="flex items-baseline justify-between pb-3 mb-6 border-b border-[var(--border)]">
+        <div className="border-t border-[var(--border)] pt-8 md:border-t-0 md:pt-0 md:border-l md:pl-12">
+          <div className="flex items-baseline justify-between gap-2 pb-3 mb-6 border-b border-[var(--border)]">
             <div className="flex items-baseline gap-2">
               <h2 className="font-semibold text-xl tracking-tight text-[var(--fg-muted)]">
                 2022
@@ -191,47 +212,51 @@ export function ComparisonArena({
                 {modo === 'urnas' ? `atingido às ${estado2022?.timestamp}` : `às ${estado2022?.timestamp}`}
               </span>
             </div>
-            <div className="text-right font-mono text-xs">
-              {lider2022 && margem2022 > 0 ? (
-                <span className="text-[var(--fg-muted)]">
-                  <span className="font-medium text-[var(--fg-muted)]">{formatCandidateName(lider2022.nome)}</span>{' '}
-                  <span className="text-[var(--fg-subtle)]">liderava</span>{' '}
-                  <span className="font-medium tabular-nums text-[var(--fg-muted)]">+{margem2022.toFixed(2)}%</span>
-                </span>
+            <div className="text-right font-mono text-xs tabular-nums">
+              {hasVotes2022 && lider2022 ? (
+                margem2022 > 0 ? (
+                  <span className="text-[var(--fg-muted)]">
+                    <span className="font-medium text-[var(--fg-muted)]">{formatCandidateName(lider2022.nome)}</span>{' '}
+                    <span className="text-[var(--fg-subtle)]">liderava</span>{' '}
+                    <span className="font-medium text-[var(--fg-muted)]">+{margem2022.toFixed(2)}%</span>
+                  </span>
+                ) : (
+                  <span className="text-[var(--fg-subtle)]">Virada histórica (50,00%)</span>
+                )
               ) : (
                 <span className="text-xs font-mono tabular-nums text-[var(--fg-subtle)]">
-                  {estado2022?.secoesTotalizadasPct.toFixed(2)}% apurado
+                  {pct2022.toFixed(2)}% apurado
                 </span>
               )}
             </div>
           </div>
 
-          <div className="space-y-7">
+          <div className="space-y-8">
             {/* 1º Lugar 2022 (Dinâmico - reflete a virada histórica) */}
             {lider2022 && (
               <div className="group">
                 <div className="flex items-baseline justify-between gap-4">
-                  <div>
+                  <div className="min-w-0">
                     <div className="flex items-center gap-2 text-xs font-mono text-[var(--fg-subtle)] mb-1">
                       <span>01</span>
                       <span>·</span>
                       <span>{lider2022.partido}</span>
                     </div>
-                    <h3 className="text-xl sm:text-2xl font-semibold tracking-tight text-[var(--fg-muted)]">
+                    <h3 className="text-xl sm:text-2xl font-semibold tracking-tight text-[var(--fg-muted)] truncate">
                       {formatCandidateName(lider2022.nome)}
                     </h3>
                   </div>
 
-                  <div className="text-right">
+                  <div className="text-right shrink-0">
                     <div className="font-mono tabular-nums text-3xl sm:text-4xl font-light tracking-tight text-[var(--fg-muted)]">
                       {lider2022.percentual.toFixed(2)}%
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-2 flex items-center justify-between text-xs font-mono text-[var(--fg-subtle)]">
-                  <span>{lider2022.votos.toLocaleString('pt-BR')} votos</span>
-                  <span>{pct2022 > 0 ? 'Liderava neste ponto da apuração' : 'Aguardando início da apuração'}</span>
+                <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] sm:text-xs font-mono tabular-nums text-[var(--fg-subtle)]">
+                  <span className="whitespace-nowrap">{lider2022.votos.toLocaleString('pt-BR')} votos</span>
+                  <span className="whitespace-nowrap">{pct2022 > 0 ? 'Liderava neste ponto' : 'Aguardando início da apuração'}</span>
                 </div>
 
                 <div className="mt-3 w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
@@ -250,27 +275,27 @@ export function ComparisonArena({
             {segundo2022 && (
               <div className="group pt-1">
                 <div className="flex items-baseline justify-between gap-4">
-                  <div>
+                  <div className="min-w-0">
                     <div className="flex items-center gap-2 text-xs font-mono text-[var(--fg-subtle)] mb-1">
                       <span>02</span>
                       <span>·</span>
                       <span>{segundo2022.partido}</span>
                     </div>
-                    <h3 className="text-xl sm:text-2xl font-semibold tracking-tight text-[var(--fg-muted)]">
+                    <h3 className="text-xl sm:text-2xl font-semibold tracking-tight text-[var(--fg-muted)] truncate">
                       {formatCandidateName(segundo2022.nome)}
                     </h3>
                   </div>
 
-                  <div className="text-right">
+                  <div className="text-right shrink-0">
                     <div className="font-mono tabular-nums text-3xl sm:text-4xl font-light tracking-tight text-[var(--fg-muted)]">
                       {segundo2022.percentual.toFixed(2)}%
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-2 flex items-center justify-between text-xs font-mono text-[var(--fg-subtle)]">
-                  <span>{segundo2022.votos.toLocaleString('pt-BR')} votos</span>
-                  <span>{pct2022 > 0 ? 'Segundo colocado' : 'Aguardando início da apuração'}</span>
+                <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] sm:text-xs font-mono tabular-nums text-[var(--fg-subtle)]">
+                  <span className="whitespace-nowrap">{segundo2022.votos.toLocaleString('pt-BR')} votos</span>
+                  <span className="whitespace-nowrap">{pct2022 > 0 ? 'Segundo colocado' : 'Aguardando início da apuração'}</span>
                 </div>
 
                 <div className="mt-3 w-full h-[2px] bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
@@ -307,7 +332,7 @@ export function ComparisonArena({
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-8 sm:gap-12 md:w-1/2">
+          <div className="grid grid-cols-2 gap-6 sm:gap-12 md:w-1/2">
             {(polymarket.bolsonaroPct >= polymarket.lulaPct
               ? [
                   {

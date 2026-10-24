@@ -657,8 +657,11 @@ async function fetchLiveMultiUFTurboState(cycle: string, electionCode: string): 
   const rawBr = results[0];
   const ufParsedList = results.slice(1);
 
-  // Verificar se houve reset completo (zerésima) no TSE
+  // Verificar se houve reset completo (zerésima oficial) no TSE:
+  // Exige que a maioria dos escopos tenha respondido de fato (não timeout/null) e que TODOS reportem 0 seções apuradas.
+  const respondingCount = (rawBr ? 1 : 0) + ufParsedList.filter(u => u !== null).length;
   const allReturnedZero =
+    respondingCount >= 15 &&
     (rawBr === null || rawBr.secoesApuradas === 0) &&
     ufParsedList.every(u => u === null || u.secoesApuradas === 0);
 
@@ -712,7 +715,25 @@ async function fetchLiveMultiUFTurboState(cycle: string, electionCode: string): 
 
   for (const meta of UF_LIST) {
     const snap = scopeHighWaterMark.get(`${electionCode}:${meta.code}`);
-    if (!snap) continue;
+    if (!snap) {
+      // Se alguma UF isolada sofreu timeout no cold-start, garante presença nas 28 UFs com totalSecoes oficial
+      sumTotalSecoes += meta.defaultSecoes;
+      ufsResult.push({
+        uf: meta.uf,
+        nome: meta.nome,
+        regiao: meta.regiao,
+        secoesTotalizadasPct: 0,
+        totalSecoes: meta.defaultSecoes,
+        secoesApuradas: 0,
+        totalVotosValidos: 0,
+        timestamp: brParsed?.timestamp || '17:00:00',
+        lulaPct: 0,
+        lulaVotos: 0,
+        bolsonaroPct: 0,
+        bolsonaroVotos: 0
+      });
+      continue;
+    }
 
     availableUFsCount++;
     sumTotalSecoes += snap.totalSecoes;
@@ -787,9 +808,11 @@ async function fetchLiveMultiUFTurboState(cycle: string, electionCode: string): 
   const brVotosValidos = brParsed?.totalVotosValidos ?? 0;
 
   const useUFAggregation =
-    hasCompleteUFs &&
-    (sumSecoesApuradas > brSecoesApuradas ||
-      (sumSecoesApuradas === brSecoesApuradas && sumVotosValidos >= brVotosValidos));
+    (hasCompleteUFs &&
+      (sumSecoesApuradas > brSecoesApuradas ||
+        (sumSecoesApuradas === brSecoesApuradas && sumVotosValidos >= brVotosValidos))) ||
+    (availableUFsCount > 0 &&
+      (!brParsed || (sumSecoesApuradas > brSecoesApuradas && sumVotosValidos >= brVotosValidos)));
 
   if (useUFAggregation) {
     const secoesTotalizadasPct = computePreciseSecoesPct(sumSecoesApuradas, sumTotalSecoes, sumVotosValidos);
@@ -913,22 +936,25 @@ function generateDemoState2026(searchParams?: URLSearchParams): ElectionState {
   const timeStr = '18:48:15';
 
   const totalSecoes = 499248;
-  const pct = parseSafeFloat(searchParams?.get('urnas'), 64.80);
-  const secoesApuradas = Math.round((pct / 100) * totalSecoes);
-  const totalVotosValidos = Math.round((pct / 100) * 120000000);
+  const rawUrnasParam = searchParams?.get('urnas') ?? searchParams?.get('pct');
+  const pct = parseSafeFloat(rawUrnasParam, 64.80);
+  const secoesApuradas = pct <= 0 ? 0 : pct >= 100 ? totalSecoes : Math.max(1, Math.round((pct / 100) * totalSecoes));
+  const totalVotosValidos = pct <= 0 ? 0 : Math.max(200, Math.round((pct / 100) * 120000000));
 
   const cand1Nome = (searchParams?.get('cand1') || 'LULA').slice(0, 40);
   const cand1Partido = (searchParams?.get('partido1') || 'PT').slice(0, 15);
   const hasCustomPct1 = searchParams?.has('pct1');
   const hasCustomPct2 = searchParams?.has('pct2');
 
-  let cand1Pct = parseSafeFloat(searchParams?.get('pct1'), 50.45);
-  let cand2Pct = parseSafeFloat(searchParams?.get('pct2'), Number((100 - cand1Pct).toFixed(2)));
+  let cand1Pct = pct <= 0 && !hasCustomPct1 && !hasCustomPct2 ? 0 : parseSafeFloat(searchParams?.get('pct1'), 50.45);
+  let cand2Pct = pct <= 0 && !hasCustomPct1 && !hasCustomPct2 ? 0 : parseSafeFloat(searchParams?.get('pct2'), Number((100 - cand1Pct).toFixed(2)));
 
-  if (!hasCustomPct1 && hasCustomPct2) {
-    cand1Pct = Number(Math.max(0, 100 - cand2Pct).toFixed(2));
-  } else if (!hasCustomPct2) {
-    cand2Pct = Number(Math.max(0, 100 - cand1Pct).toFixed(2));
+  if (pct > 0 || hasCustomPct1 || hasCustomPct2) {
+    if (!hasCustomPct1 && hasCustomPct2) {
+      cand1Pct = Number(Math.max(0, 100 - cand2Pct).toFixed(2));
+    } else if (!hasCustomPct2) {
+      cand2Pct = Number(Math.max(0, 100 - cand1Pct).toFixed(2));
+    }
   }
 
   const cand2Nome = (searchParams?.get('cand2') || 'FLÁVIO BOLSONARO').slice(0, 40);
@@ -973,13 +999,13 @@ function generateDemoState2026(searchParams?: URLSearchParams): ElectionState {
   const c2Key = cand2Nome.toUpperCase().trim();
 
   const demoUFs: UFResult[] = UF_LIST.map((meta, idx) => {
-    const ufPct = Number(Math.min(100, Math.max(0, pct * meta.demoProgressBias)).toFixed(2));
-    const ufSecoesApuradas = Math.round((ufPct / 100) * meta.defaultSecoes);
-    const ufVotosValidos = Math.round(120000000 * (meta.demoWeight / 100) * (ufPct / 100));
-    const shift = cand1Pct - 50.45;
+    const ufPct = pct <= 0 ? 0 : Number(Math.min(100, Math.max(0, pct * meta.demoProgressBias)).toFixed(2));
+    const ufSecoesApuradas = ufPct <= 0 ? 0 : Math.round((ufPct / 100) * meta.defaultSecoes);
+    const ufVotosValidos = ufPct <= 0 ? 0 : Math.round(120000000 * (meta.demoWeight / 100) * (ufPct / 100));
+    const shift = cand1Pct > 0 ? cand1Pct - 50.45 : 0;
     const stateVariation = ((idx % 5) - 2) * 0.45;
-    const lulaPct = Number(Math.min(95, Math.max(5, meta.demoLulaShare + shift + stateVariation)).toFixed(2));
-    const bolsonaroPct = Number((100 - lulaPct).toFixed(2));
+    const lulaPct = ufVotosValidos <= 0 ? 0 : Number(Math.min(95, Math.max(5, meta.demoLulaShare + shift + stateVariation)).toFixed(2));
+    const bolsonaroPct = ufVotosValidos <= 0 ? 0 : Number((100 - lulaPct).toFixed(2));
     const lulaVotos = Math.round(ufVotosValidos * (lulaPct / 100));
     const bolsonaroVotos = Math.max(0, ufVotosValidos - lulaVotos);
 
@@ -1004,20 +1030,34 @@ function generateDemoState2026(searchParams?: URLSearchParams): ElectionState {
     (basePoly.lulaDeltaPct !== undefined && Math.abs(basePoly.lulaDeltaPct) >= 0.1) ||
     (basePoly.bolsonaroDeltaPct !== undefined && Math.abs(basePoly.bolsonaroDeltaPct) >= 0.1);
 
+  const baseDemoTimeline: TimelinePoint2026[] = [
+    { urnasPct: 5.0, timestamp: '17:15', candidatos: { [c1Key]: 45.80, [c2Key]: 54.20 } },
+    { urnasPct: 18.0, timestamp: '17:35', candidatos: { [c1Key]: 47.40, [c2Key]: 52.60 } },
+    { urnasPct: 35.0, timestamp: '18:00', candidatos: { [c1Key]: 48.75, [c2Key]: 51.25 } },
+    { urnasPct: 50.0, timestamp: '18:25', candidatos: { [c1Key]: 49.65, [c2Key]: 50.35 } }
+  ];
+  const filteredDemoTimeline =
+    pct <= 0
+      ? []
+      : [
+          ...baseDemoTimeline.filter(pt => pt.urnasPct < pct - 0.05),
+          { urnasPct: pct, timestamp: timeStr, candidatos: { [c1Key]: cand1Pct, [c2Key]: cand2Pct } }
+        ];
+
   return {
     ano: 2026,
-    timestamp: timeStr,
+    timestamp: pct <= 0 ? '17:00:00' : timeStr,
     dataHoraISO: now.toISOString(),
     secoesTotalizadasPct: pct,
     totalSecoes,
     secoesApuradas,
     totalVotosValidos,
     votosBrancos: Math.round(totalVotosValidos * 0.0145),
-    votosBrancosPct: 1.38,
+    votosBrancosPct: pct > 0 ? 1.38 : 0,
     votosNulos: Math.round(totalVotosValidos * 0.0312),
-    votosNulosPct: 2.96,
+    votosNulosPct: pct > 0 ? 2.96 : 0,
     abstencao: Math.round(158745502 * (pct / 100) * 0.2045),
-    abstencaoPct: 20.45,
+    abstencaoPct: pct > 0 ? 20.45 : 0,
     secoesAdiantadasUF: pct > 0 && pct < 100 ? 1842 : 0,
     votosAdiantadosUF: pct > 0 && pct < 100 ? 214590 : 0,
     ufs: demoUFs,
@@ -1030,16 +1070,10 @@ function generateDemoState2026(searchParams?: URLSearchParams): ElectionState {
           deltaWindow: '5m'
         },
     candidatos: rawCandidatos,
-    status: pct >= 99.9 ? 'finalizada' : pct > 0 ? 'em_andamento' : 'aguardando',
+    status: secoesApuradas >= totalSecoes && totalSecoes > 0 ? 'finalizada' : pct > 0 ? 'em_andamento' : 'aguardando',
     origem: 'tse-demo',
-    mensagemStatus: `MODO DEMONSTRAÇÃO 2º TURNO (simulando ${pct.toFixed(1)}% das urnas)`,
-    timeline2026: [
-      { urnasPct: 5.0, timestamp: '17:15', candidatos: { [c1Key]: 45.80, [c2Key]: 54.20 } },
-      { urnasPct: 18.0, timestamp: '17:35', candidatos: { [c1Key]: 47.40, [c2Key]: 52.60 } },
-      { urnasPct: 35.0, timestamp: '18:00', candidatos: { [c1Key]: 48.75, [c2Key]: 51.25 } },
-      { urnasPct: 50.0, timestamp: '18:25', candidatos: { [c1Key]: 49.65, [c2Key]: 50.35 } },
-      { urnasPct: pct, timestamp: timeStr, candidatos: { [c1Key]: cand1Pct, [c2Key]: cand2Pct } }
-    ]
+    mensagemStatus: `MODO DEMONSTRAÇÃO 2º TURNO (simulando ${pct.toFixed(2)}% das urnas)`,
+    timeline2026: filteredDemoTimeline
   };
 }
 

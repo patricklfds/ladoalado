@@ -26,7 +26,7 @@ export function ProgressHeader({
     <section className="py-6 sm:py-8 border-b border-[var(--border)]">
       <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 mb-3">
         <div className="flex items-baseline gap-3">
-          <span className="font-mono tabular-nums text-3xl sm:text-4xl font-light tracking-tight text-[var(--fg)]">
+          <span className="font-mono tabular-nums text-2xl sm:text-3xl font-light tracking-tight text-[var(--fg)]">
             {pct2026.toFixed(2)}%
           </span>
           <span className="text-xs uppercase tracking-widest text-[var(--fg-muted)] font-medium">
@@ -37,15 +37,21 @@ export function ProgressHeader({
         {/* Nota comparativa de ritmo */}
         <div className="text-xs font-mono text-[var(--fg-muted)]">
           {modo === 'urnas' ? (
-            <span>
-              em 2022 este marco ocorreu às{' '}
-              <strong className="text-[var(--fg)] font-semibold">{estado2022?.timestamp || '--:--'}</strong>
-              {ritmoMinutos !== 0 && (
-                <span className="text-[var(--fg-subtle)] ml-1">
-                  ({ritmoMinutos > 0 ? `+${ritmoMinutos} min mais rápida` : `${Math.abs(ritmoMinutos)} min mais lenta`})
-                </span>
-              )}
-            </span>
+            pct2026 > 0 ? (
+              <span>
+                em 2022 este marco ocorreu às{' '}
+                <strong className="text-[var(--fg)] font-semibold">{estado2022?.timestamp || '--:--'}</strong>
+                {ritmoMinutos !== 0 && (
+                  <span className="text-[var(--fg-subtle)] ml-1">
+                    ({ritmoMinutos > 0 ? `+${ritmoMinutos} min mais rápida` : `${Math.abs(ritmoMinutos)} min mais lenta`})
+                  </span>
+                )}
+              </span>
+            ) : (
+              <span className="text-[var(--fg-subtle)]">
+                início oficial da totalização às <strong className="text-[var(--fg-muted)] font-medium">17:00</strong>
+              </span>
+            )
           ) : (
             <span>
               em 2022 no mesmo horário estava em{' '}
