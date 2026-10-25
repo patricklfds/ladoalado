@@ -259,10 +259,6 @@ function parsePolymarketEvents(events: PolymarketEventPayload[]): PolymarketOdds
 
   let lulaPct: number | null = null;
   let bolsonaroPct: number | null = null;
-  let lula1hDelta: number | null = null;
-  let bolso1hDelta: number | null = null;
-  let lula24hDelta: number | null = null;
-  let bolso24hDelta: number | null = null;
 
   for (const m of ev.markets) {
     if (!m.active || m.closed) continue;
@@ -285,17 +281,11 @@ function parsePolymarketEvents(events: PolymarketEventPayload[]): PolymarketOdds
 
     if (!Number.isFinite(yesPrice) || yesPrice < 0 || yesPrice > 1) continue;
     const pct = Number((yesPrice * 100).toFixed(1));
-    const chg1h = m.oneHourPriceChange !== undefined ? Number((Number(m.oneHourPriceChange) * 100).toFixed(1)) : null;
-    const chg24h = m.oneDayPriceChange !== undefined ? Number((Number(m.oneDayPriceChange) * 100).toFixed(1)) : null;
 
     if (title.includes('LULA')) {
       lulaPct = pct;
-      if (chg1h !== null && Number.isFinite(chg1h)) lula1hDelta = chg1h;
-      if (chg24h !== null && Number.isFinite(chg24h)) lula24hDelta = chg24h;
     } else if (title.includes('BOLSONARO') || title.includes('FLÁVIO') || title.includes('FLAVIO')) {
       bolsonaroPct = pct;
-      if (chg1h !== null && Number.isFinite(chg1h)) bolso1hDelta = chg1h;
-      if (chg24h !== null && Number.isFinite(chg24h)) bolso24hDelta = chg24h;
     }
   }
 
@@ -320,68 +310,46 @@ function parsePolymarketEvents(events: PolymarketEventPayload[]): PolymarketOdds
   }
   const volumeUsd = ev.volume !== undefined ? Number(ev.volume) : undefined;
 
-  // Registra no buffer circular de até 60 minutos para detectar oscilações rápidas de 5m e 15m durante a apuração
+  // Registra no buffer circular de até 60 minutos para detectar oscilação estritamente minuto a minuto (1m)
   const nowMs = Date.now();
   const lastSample = polymarketHistory[polymarketHistory.length - 1];
-  if (!lastSample || nowMs - lastSample.timestampMs >= 15000) {
+  if (!lastSample || nowMs - lastSample.timestampMs >= 5000) {
     polymarketHistory.push({ timestampMs: nowMs, lulaPct: finalLula, bolsonaroPct: finalBolso });
-    while (polymarketHistory.length > 0 && nowMs - polymarketHistory[0].timestampMs > 65 * 60 * 1000) {
+    while (polymarketHistory.length > 0 && nowMs - polymarketHistory[0].timestampMs > 60 * 60 * 1000) {
       polymarketHistory.shift();
     }
   }
 
-  // Seleção adaptativa de janela: prioriza 5m e 15m quando há movimento na apuração ao vivo; caso contrário, usa 1h / 24h da API Gamma
-  const sample5m = polymarketHistory.find(
-    p => nowMs - p.timestampMs >= 3 * 60 * 1000 && nowMs - p.timestampMs <= 8 * 60 * 1000
-  );
-  const sample15m = polymarketHistory.find(
-    p => nowMs - p.timestampMs >= 10 * 60 * 1000 && nowMs - p.timestampMs <= 22 * 60 * 1000
-  );
+  // Busca a amostra mais próxima de 60 segundos atrás para o delta estritamente minuto a minuto (1m)
+  let sample1m: { timestampMs: number; lulaPct: number; bolsonaroPct: number } | null = null;
+  let minDiff1m = Infinity;
+
+  for (const s of polymarketHistory) {
+    const age = nowMs - s.timestampMs;
+    if (age >= 35 * 1000 && age <= 100 * 1000) {
+      const diff = Math.abs(age - 60 * 1000);
+      if (diff < minDiff1m) {
+        minDiff1m = diff;
+        sample1m = s;
+      }
+    }
+  }
+
+  // Se o servidor acabou de reiniciar e não tem ponto de 60s, usa o mais antigo disponível se >= 15s
+  if (!sample1m && polymarketHistory.length > 1) {
+    const earliest = polymarketHistory[0];
+    if (nowMs - earliest.timestampMs >= 15 * 1000) {
+      sample1m = earliest;
+    }
+  }
 
   let lulaDeltaPct = 0;
   let bolsonaroDeltaPct = 0;
-  let deltaWindow = '1h';
+  const deltaWindow = '1m';
 
-  if (
-    sample5m &&
-    (Math.abs(finalLula - sample5m.lulaPct) >= 0.1 || Math.abs(finalBolso - sample5m.bolsonaroPct) >= 0.1)
-  ) {
-    lulaDeltaPct = Number((finalLula - sample5m.lulaPct).toFixed(1));
+  if (sample1m) {
+    lulaDeltaPct = Number((finalLula - sample1m.lulaPct).toFixed(1));
     bolsonaroDeltaPct = Number((-lulaDeltaPct).toFixed(1));
-    deltaWindow = '5m';
-  } else if (
-    sample15m &&
-    (Math.abs(finalLula - sample15m.lulaPct) >= 0.1 || Math.abs(finalBolso - sample15m.bolsonaroPct) >= 0.1)
-  ) {
-    lulaDeltaPct = Number((finalLula - sample15m.lulaPct).toFixed(1));
-    bolsonaroDeltaPct = Number((-lulaDeltaPct).toFixed(1));
-    deltaWindow = '15m';
-  } else if (
-    (lula1hDelta !== null && Math.abs(lula1hDelta) >= 0.1) ||
-    (bolso1hDelta !== null && Math.abs(bolso1hDelta) >= 0.1)
-  ) {
-    const netBolso1h =
-      bolso1hDelta !== null && lula1hDelta !== null
-        ? Number(((bolso1hDelta - lula1hDelta) / 2).toFixed(1))
-        : bolso1hDelta ?? Number((-(lula1hDelta ?? 0)).toFixed(1));
-    bolsonaroDeltaPct = netBolso1h;
-    lulaDeltaPct = Number((-netBolso1h).toFixed(1));
-    deltaWindow = '1h';
-  } else if (
-    (lula24hDelta !== null && Math.abs(lula24hDelta) >= 0.1) ||
-    (bolso24hDelta !== null && Math.abs(bolso24hDelta) >= 0.1)
-  ) {
-    const netBolso24h =
-      bolso24hDelta !== null && lula24hDelta !== null
-        ? Number(((bolso24hDelta - lula24hDelta) / 2).toFixed(1))
-        : bolso24hDelta ?? Number((-(lula24hDelta ?? 0)).toFixed(1));
-    bolsonaroDeltaPct = netBolso24h;
-    lulaDeltaPct = Number((-netBolso24h).toFixed(1));
-    deltaWindow = '24h';
-  } else if (lula1hDelta !== null || bolso1hDelta !== null) {
-    lulaDeltaPct = 0;
-    bolsonaroDeltaPct = 0;
-    deltaWindow = '1h';
   }
 
   return {

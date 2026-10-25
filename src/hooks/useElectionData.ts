@@ -230,7 +230,7 @@ export function useElectionData() {
         const nowMs = Date.now();
         const hist = polymarketHistoryRef.current;
         const lastPt = hist[hist.length - 1];
-        if (!lastPt || nowMs - lastPt.timestampMs >= 10000) {
+        if (!lastPt || nowMs - lastPt.timestampMs >= 5000) {
           hist.push({
             timestampMs: nowMs,
             lulaPct: rawData.polymarket.lulaPct,
@@ -240,18 +240,40 @@ export function useElectionData() {
             hist.shift();
           }
         }
-        const pt5m = hist.find(p => nowMs - p.timestampMs >= 3 * 60 * 1000 && nowMs - p.timestampMs <= 8 * 60 * 1000);
-        if (
-          pt5m &&
-          (Math.abs(rawData.polymarket.lulaPct - pt5m.lulaPct) >= 0.1 ||
-            Math.abs(rawData.polymarket.bolsonaroPct - pt5m.bolsonaroPct) >= 0.1)
-        ) {
-          const lulaDelta = Number((rawData.polymarket.lulaPct - pt5m.lulaPct).toFixed(1));
+
+        // Busca o ponto de exatamente 1 minuto atrás (~60s) no histórico do cliente
+        let sample1m: { timestampMs: number; lulaPct: number; bolsonaroPct: number } | null = null;
+        let minDiff = Infinity;
+        for (const p of hist) {
+          const age = nowMs - p.timestampMs;
+          if (age >= 35 * 1000 && age <= 100 * 1000) {
+            const diff = Math.abs(age - 60 * 1000);
+            if (diff < minDiff) {
+              minDiff = diff;
+              sample1m = p;
+            }
+          }
+        }
+
+        if (!sample1m && hist.length > 1) {
+          const earliest = hist[0];
+          if (nowMs - earliest.timestampMs >= 15 * 1000) {
+            sample1m = earliest;
+          }
+        }
+
+        if (sample1m) {
+          const lulaDelta = Number((rawData.polymarket.lulaPct - sample1m.lulaPct).toFixed(1));
           rawData.polymarket = {
             ...rawData.polymarket,
             lulaDeltaPct: lulaDelta,
             bolsonaroDeltaPct: Number((-lulaDelta).toFixed(1)),
-            deltaWindow: '5m'
+            deltaWindow: '1m'
+          };
+        } else {
+          rawData.polymarket = {
+            ...rawData.polymarket,
+            deltaWindow: '1m'
           };
         }
       }

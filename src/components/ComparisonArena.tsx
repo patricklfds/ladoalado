@@ -439,7 +439,7 @@ export function ComparisonArena({
                   }
                 ]
             ).map(item => {
-              const windowLabel = polymarket.deltaWindow || '1h';
+              const windowLabel = polymarket.deltaWindow || '1m';
               const isPos = item.deltaPct > 0.04;
               const isNeg = item.deltaPct < -0.04;
               const formattedDelta = `${isPos ? '+' : ''}${item.deltaPct.toFixed(1)}%`;
