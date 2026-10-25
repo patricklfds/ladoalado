@@ -42,7 +42,26 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
       const bolsonaroPct =
         totalVotosValidos > 0 ? Number(Math.max(0, 100 - lulaPct).toFixed(2)) : 0;
 
-      const base2022 = get2022RegiaoBaseline(regiao, secoesPct);
+      // Ponderar o baseline de 2022 de cada estado pelos votos válidos apurados naquele estado agora em 2026.
+      // Isso elimina qualquer contradição (Paradoxo de Simpson) quando um estado apura mais rápido que outro na região.
+      let base2022: { lula2022: number; bolso2022: number };
+      if (totalVotosValidos > 0) {
+        let weightedLula2022 = 0;
+        for (const s of states) {
+          if (s.totalVotosValidos > 0) {
+            const stateBase22 = get2022UFBaseline(s.uf, s.secoesTotalizadasPct);
+            weightedLula2022 += s.totalVotosValidos * (stateBase22.lula2022 / 100);
+          }
+        }
+        const lula22 = Number(((weightedLula2022 / totalVotosValidos) * 100).toFixed(2));
+        base2022 = {
+          lula2022: lula22,
+          bolso2022: Number((100 - lula22).toFixed(2))
+        };
+      } else {
+        base2022 = get2022RegiaoBaseline(regiao, 0);
+      }
+
       const deltaLula = Number((lulaPct - base2022.lula2022).toFixed(1));
 
       return {
