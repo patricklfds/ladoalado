@@ -49,7 +49,10 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
         let weightedLula2022 = 0;
         for (const s of states) {
           if (s.totalVotosValidos > 0) {
-            const stateBase22 = get2022UFBaseline(s.uf, s.secoesTotalizadasPct);
+            const effectivePct = s.secoesTotalizadasPct > 0
+              ? s.secoesTotalizadasPct
+              : (s.secoesApuradas > 0 && s.totalSecoes > 0 ? (s.secoesApuradas / s.totalSecoes) * 100 : 0.01);
+            const stateBase22 = get2022UFBaseline(s.uf, effectivePct);
             weightedLula2022 += s.totalVotosValidos * (stateBase22.lula2022 / 100);
           }
         }
@@ -276,7 +279,10 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-9 gap-y-4 font-mono text-xs">
         {visibleUFs.map(u => {
           const hasVotes = u.totalVotosValidos > 0;
-          const base22 = get2022UFBaseline(u.uf, u.secoesTotalizadasPct);
+          const effectivePct = u.secoesTotalizadasPct > 0
+            ? u.secoesTotalizadasPct
+            : (hasVotes ? 0.01 : 0);
+          const base22 = get2022UFBaseline(u.uf, effectivePct);
           const deltaLula = Number((u.lulaPct - base22.lula2022).toFixed(1));
           const barLula = hasVotes ? u.lulaPct : base22.lula2022;
           const lulaLeads = u.lulaPct >= u.bolsonaroPct;
