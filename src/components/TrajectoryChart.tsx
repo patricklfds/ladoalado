@@ -53,7 +53,11 @@ function interpolate2026AtUrnas(
     const p1 = findCandidatePct(cand1, first.candidatos);
     const p2 = findCandidatePct(cand2, first.candidatos);
     if (p1 === null || p2 === null) return null;
-    return { p1, p2, timestamp: first.timestamp };
+    return {
+      p1,
+      p2,
+      timestamp: Math.abs(targetPct - first.urnasPct) < 2 ? first.timestamp : undefined
+    };
   }
 
   const last = points[points.length - 1];
@@ -327,11 +331,17 @@ export function TrajectoryChart({
                 {' · '}
                 {hover2026 ? (
                   <>
-                    <span>2026: {cand1Nome.split(' ')[0]} <strong className="text-[var(--fg)] font-medium">{hover2026.p1.toFixed(2)}%</strong> vs {cand2Nome.split(' ')[0]} <strong className="text-[var(--fg)] font-medium">{hover2026.p2.toFixed(2)}%</strong></span>
+                    <span>
+                      <strong className="text-[var(--fg)]">2026</strong>
+                      {hover2026.timestamp ? ` (às ${hover2026.timestamp.slice(0, 5)})` : ''}: {cand1Nome.split(' ')[0]} <strong className="text-[var(--fg)] font-medium">{hover2026.p1.toFixed(2)}%</strong> vs {cand2Nome.split(' ')[0]} <strong className="text-[var(--fg)] font-medium">{hover2026.p2.toFixed(2)}%</strong>
+                    </span>
                     {' · '}
                   </>
                 ) : null}
-                <span>2022 ({hover2022.timestamp}): Lula {hover2022.lulaPct.toFixed(2)}% vs Bolsonaro {hover2022.bolsonaroPct.toFixed(2)}%</span>
+                <span>
+                  <strong className="text-[var(--fg-muted)]">2022</strong>
+                  {` (em 22 foi às ${hover2022.timestamp})`}: Lula {hover2022.lulaPct.toFixed(2)}% vs Bolsonaro {hover2022.bolsonaroPct.toFixed(2)}%
+                </span>
                 <button
                   type="button"
                   onClick={() => setHoverPct(null)}
@@ -610,7 +620,9 @@ export function TrajectoryChart({
                 textAnchor="middle"
                 className="fill-[var(--fg)] text-[10px] font-mono font-medium tabular-nums"
               >
-                {hoverPct.toFixed(1)}% · {hover2022.timestamp}
+                {hover2026?.timestamp
+                  ? `${hoverPct.toFixed(1)}% · às ${hover2026.timestamp.slice(0, 5)}`
+                  : `${hoverPct.toFixed(1)}% das urnas`}
               </text>
 
               {/* Pontos 2022 na posição inspecionada */}

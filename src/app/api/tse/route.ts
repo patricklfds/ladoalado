@@ -963,7 +963,10 @@ async function fetchLiveMultiUFTurboState(cycle: string, electionCode: string): 
  */
 function generateDemoState2026(searchParams?: URLSearchParams): ElectionState {
   const now = new Date();
-  const timeStr = '18:48:15';
+  const timeStr = now.toLocaleTimeString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    hour12: false
+  });
 
   const totalSecoes = 499248;
   const rawUrnasParam = searchParams?.get('urnas') ?? searchParams?.get('pct');
@@ -1061,10 +1064,10 @@ function generateDemoState2026(searchParams?: URLSearchParams): ElectionState {
     (basePoly.bolsonaroDeltaPct !== undefined && Math.abs(basePoly.bolsonaroDeltaPct) >= 0.1);
 
   const baseDemoTimeline: TimelinePoint2026[] = [
-    { urnasPct: 5.0, timestamp: '17:15', candidatos: { [c1Key]: 45.80, [c2Key]: 54.20 } },
-    { urnasPct: 18.0, timestamp: '17:35', candidatos: { [c1Key]: 47.40, [c2Key]: 52.60 } },
-    { urnasPct: 35.0, timestamp: '18:00', candidatos: { [c1Key]: 48.75, [c2Key]: 51.25 } },
-    { urnasPct: 50.0, timestamp: '18:25', candidatos: { [c1Key]: 49.65, [c2Key]: 50.35 } }
+    { urnasPct: 5.0, timestamp: '18:50', candidatos: { [c1Key]: 45.80, [c2Key]: 54.20 } },
+    { urnasPct: 18.0, timestamp: '19:35', candidatos: { [c1Key]: 47.40, [c2Key]: 52.60 } },
+    { urnasPct: 35.0, timestamp: '20:00', candidatos: { [c1Key]: 48.75, [c2Key]: 51.25 } },
+    { urnasPct: 50.0, timestamp: '20:25', candidatos: { [c1Key]: 49.65, [c2Key]: 50.35 } }
   ];
   const filteredDemoTimeline =
     pct <= 0
