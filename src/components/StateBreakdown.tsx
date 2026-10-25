@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import type { UFResult, MacroRegiao } from '@/lib/types';
+import { get2022UFBaseline, get2022RegiaoBaseline } from '@/lib/historicalUFs2022';
 
 interface StateBreakdownProps {
   ufs?: UFResult[];
@@ -17,48 +18,6 @@ const REGIOES_ORDER: MacroRegiao[] = [
   'Centro-Oeste',
   'Exterior'
 ];
-
-// Resultado oficial do 2º Turno de 2022 (TSE Pleito 545 - 30/10/2022) por Macro-Região
-const REGIAO_2022_BASELINE: Record<MacroRegiao, { lula2022: number; bolso2022: number }> = {
-  'Sudeste': { lula2022: 45.74, bolso2022: 54.26 },
-  'Nordeste': { lula2022: 69.34, bolso2022: 30.66 },
-  'Sul': { lula2022: 38.16, bolso2022: 61.84 },
-  'Norte': { lula2022: 49.00, bolso2022: 51.00 },
-  'Centro-Oeste': { lula2022: 39.79, bolso2022: 60.21 },
-  'Exterior': { lula2022: 51.28, bolso2022: 48.72 }
-};
-
-// Resultado oficial do 2º Turno de 2022 (TSE Pleito 545 - 30/10/2022) por UF
-const UF_2022_BASELINE: Record<string, { lula2022: number; bolso2022: number }> = {
-  SP: { lula2022: 44.76, bolso2022: 55.24 },
-  MG: { lula2022: 50.20, bolso2022: 49.80 },
-  RJ: { lula2022: 43.47, bolso2022: 56.53 },
-  BA: { lula2022: 72.12, bolso2022: 27.88 },
-  RS: { lula2022: 43.65, bolso2022: 56.35 },
-  PR: { lula2022: 37.60, bolso2022: 62.40 },
-  CE: { lula2022: 69.97, bolso2022: 30.03 },
-  PE: { lula2022: 66.93, bolso2022: 33.07 },
-  PA: { lula2022: 54.75, bolso2022: 45.25 },
-  SC: { lula2022: 30.73, bolso2022: 69.27 },
-  MA: { lula2022: 71.14, bolso2022: 28.86 },
-  GO: { lula2022: 41.29, bolso2022: 58.71 },
-  PB: { lula2022: 66.62, bolso2022: 33.38 },
-  ES: { lula2022: 41.96, bolso2022: 58.04 },
-  PI: { lula2022: 76.86, bolso2022: 23.14 },
-  MT: { lula2022: 34.92, bolso2022: 65.08 },
-  RN: { lula2022: 65.10, bolso2022: 34.90 },
-  AM: { lula2022: 51.10, bolso2022: 48.90 },
-  MS: { lula2022: 40.51, bolso2022: 59.49 },
-  AL: { lula2022: 58.68, bolso2022: 41.32 },
-  DF: { lula2022: 41.19, bolso2022: 58.81 },
-  SE: { lula2022: 67.21, bolso2022: 32.79 },
-  RO: { lula2022: 29.34, bolso2022: 70.66 },
-  TO: { lula2022: 51.36, bolso2022: 48.64 },
-  AC: { lula2022: 29.70, bolso2022: 70.30 },
-  AP: { lula2022: 48.64, bolso2022: 51.36 },
-  RR: { lula2022: 23.92, bolso2022: 76.08 },
-  ZZ: { lula2022: 51.28, bolso2022: 48.72 }
-};
 
 export function StateBreakdown({ ufs }: StateBreakdownProps) {
   const [sortMode, setSortMode] = useState<SortMode>('volume');
@@ -83,7 +42,7 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
       const bolsonaroPct =
         totalVotosValidos > 0 ? Number(Math.max(0, 100 - lulaPct).toFixed(2)) : 0;
 
-      const base2022 = REGIAO_2022_BASELINE[regiao];
+      const base2022 = get2022RegiaoBaseline(regiao, secoesPct);
       const deltaLula = Number((lulaPct - base2022.lula2022).toFixed(1));
 
       return {
@@ -130,7 +89,7 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
             Apuração por Região e Estado
           </h3>
           <p className="text-xs text-[var(--fg-muted)] mt-0.5">
-            Placar regional de 2026 e variação direta em relação ao 2º turno de 2022
+            Placar regional de 2026 e variação na mesma % de apuração do 2º turno de 2022
           </p>
         </div>
 
@@ -265,7 +224,10 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
               <div className="flex items-center justify-between gap-2 text-[11px] font-mono tabular-nums text-[var(--fg-subtle)] w-full">
                 <span>vs. 2º turno 2022</span>
                 {hasVotes ? (
-                  <span className="inline-flex items-center gap-1.5 text-[var(--fg-muted)] whitespace-nowrap">
+                  <span
+                    title={`Em 2022 (${r.secoesPct.toFixed(1)}% apurado): Lula ${r.lula2022.toFixed(1)}% · Bolsonaro ${r.bolso2022.toFixed(1)}%`}
+                    className="inline-flex items-center gap-1.5 text-[var(--fg-muted)] whitespace-nowrap cursor-help"
+                  >
                     {Math.abs(r.deltaLula) >= 0.05 && (
                       <span
                         className="w-1.5 h-1.5 rounded-full"
@@ -295,7 +257,7 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-9 gap-y-4 font-mono text-xs">
         {visibleUFs.map(u => {
           const hasVotes = u.totalVotosValidos > 0;
-          const base22 = UF_2022_BASELINE[u.uf] || { lula2022: 50, bolso2022: 50 };
+          const base22 = get2022UFBaseline(u.uf, u.secoesTotalizadasPct);
           const deltaLula = Number((u.lulaPct - base22.lula2022).toFixed(1));
           const barLula = hasVotes ? u.lulaPct : base22.lula2022;
           const lulaLeads = u.lulaPct >= u.bolsonaroPct;
@@ -356,7 +318,10 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
                 )}
 
                 {hasVotes ? (
-                  <span className="inline-flex items-center gap-1 text-[var(--fg-subtle)] whitespace-nowrap">
+                  <span
+                    title={`Em 2022 (${u.secoesTotalizadasPct.toFixed(1)}% apurado): Lula ${base22.lula2022.toFixed(1)}% · Bolsonaro ${base22.bolso2022.toFixed(1)}%`}
+                    className="inline-flex items-center gap-1 text-[var(--fg-subtle)] whitespace-nowrap cursor-help"
+                  >
                     {Math.abs(deltaLula) >= 0.05 && (
                       <span
                         className="w-1.5 h-1.5 rounded-full"
