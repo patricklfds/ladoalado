@@ -133,10 +133,21 @@ export function TrajectoryChart({
 }: TrajectoryChartProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [hoverPct, setHoverPct] = useState<number | null>(null);
+  const [isMobile, setIsMobile] = useState<boolean>(false);
 
-  const width = 800;
-  const height = 195;
-  const padding = { top: 22, right: 116, bottom: 25, left: 35 };
+  React.useEffect(() => {
+    const mq = window.matchMedia('(max-width: 640px)');
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+
+  const width = isMobile ? 540 : 800;
+  const height = isMobile ? 235 : 205;
+  const padding = isMobile
+    ? { top: 18, right: 86, bottom: 26, left: 32 }
+    : { top: 20, right: 112, bottom: 26, left: 35 };
 
   const plotW = width - padding.left - padding.right;
   const plotH = height - padding.top - padding.bottom;
@@ -458,7 +469,7 @@ export function TrajectoryChart({
                 fill="var(--color-pt)"
                 className="text-[9.5px] font-mono tabular-nums"
               >
-                50,9% Lula (22)
+                {isMobile ? '50,9% Lula' : '50,9% Lula (22)'}
               </text>
               <circle
                 cx={scaleX(100)}
@@ -474,45 +485,22 @@ export function TrajectoryChart({
                 fill="var(--color-pl)"
                 className="text-[9.5px] font-mono tabular-nums"
               >
-                49,1% Bolso. (22)
+                {isMobile ? '49,1% Bolso.' : '49,1% Bolso. (22)'}
               </text>
             </g>
           )}
 
-          {/* Marco discreto da Virada Histórica de 2022 (67,76% · 50,0%) sem linha vertical duplicada */}
+          {/* Marco discreto da Virada Histórica de 2022 (67,76% · 50,0%) */}
           {timeline2022.length > 0 && (
-            <g>
-              <circle
-                cx={virada2022X}
-                cy={y50}
-                r={hoverPct !== null && Math.abs(hoverPct - 67.76) < 0.2 ? "3.5" : "2.4"}
-                fill="var(--bg)"
-                stroke="var(--fg-subtle)"
-                strokeWidth="1.2"
-                opacity={hoverPct !== null && Math.abs(hoverPct - 67.76) < 0.2 ? 1 : 0.75}
-              />
-              {hoverPct === null && (
-                <>
-                  <line
-                    x1={virada2022X}
-                    y1={padding.top - 3}
-                    x2={virada2022X}
-                    y2={padding.top + 3}
-                    stroke="var(--fg-subtle)"
-                    strokeWidth="1"
-                    opacity="0.5"
-                  />
-                  <text
-                    x={virada2022X}
-                    y={padding.top - 7}
-                    textAnchor="middle"
-                    className="fill-[var(--fg-subtle)] text-[9.5px] font-mono tabular-nums"
-                  >
-                    virada 22 (67,8%)
-                  </text>
-                </>
-              )}
-            </g>
+            <circle
+              cx={virada2022X}
+              cy={y50}
+              r={hoverPct !== null && Math.abs(hoverPct - 67.76) < 0.2 ? "3.5" : "2.4"}
+              fill="var(--bg)"
+              stroke="var(--fg-subtle)"
+              strokeWidth="1.2"
+              opacity={hoverPct !== null && Math.abs(hoverPct - 67.76) < 0.2 ? 1 : 0.75}
+            />
           )}
 
           {/* Curvas 2026 (Sólidas com cores dinâmicas dos candidatos 1º e 2º) */}

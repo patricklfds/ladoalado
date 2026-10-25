@@ -81,7 +81,7 @@ export function ProgressHeader({
       {/* Metadados editoriais da totalização */}
       <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono tabular-nums text-[var(--fg-subtle)]">
         <div className="flex items-center gap-2">
-          <span>{secoesApuradas2026} de {totalSecoes2026} seções</span>
+          <span>{secoesApuradas2026} de {totalSecoes2026} seções apuradas</span>
           {(estado2026?.totalVotosValidos ?? 0) > 0 && (
             <>
               <span>·</span>
@@ -89,7 +89,6 @@ export function ProgressHeader({
             </>
           )}
         </div>
-        <span className="uppercase tracking-[0.08em] text-[10px]">Totalização nacional · TSE</span>
       </div>
     </section>
   );
