@@ -174,27 +174,38 @@ export function Header({
 
   const handleShare = async () => {
     const text = buildShareText(estado2026, estado2022, modo);
-    const isMobileTouch =
-      typeof window !== 'undefined' &&
-      window.matchMedia('(max-width: 640px)').matches &&
-      typeof navigator !== 'undefined' &&
-      typeof navigator.share === 'function';
 
-    if (isMobileTouch) {
+    let copied = false;
+    if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
       try {
-        await navigator.share({ text });
-        return;
-      } catch (err) {
-        if ((err as Error)?.name === 'AbortError') return;
+        await navigator.clipboard.writeText(text);
+        copied = true;
+      } catch {
+        copied = false;
       }
     }
 
-    try {
-      await navigator.clipboard.writeText(text);
+    if (!copied && typeof document !== 'undefined') {
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.top = '0';
+        textarea.style.left = '0';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        copied = document.execCommand('copy');
+        document.body.removeChild(textarea);
+      } catch {
+        copied = false;
+      }
+    }
+
+    if (copied) {
       setCopiedShare(true);
-      setTimeout(() => setCopiedShare(false), 2200);
-    } catch {
-      // Fallback caso clipboard falhe
+      setTimeout(() => setCopiedShare(false), 2500);
     }
   };
 
