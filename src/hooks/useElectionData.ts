@@ -246,10 +246,11 @@ export function useElectionData() {
           (Math.abs(rawData.polymarket.lulaPct - pt5m.lulaPct) >= 0.1 ||
             Math.abs(rawData.polymarket.bolsonaroPct - pt5m.bolsonaroPct) >= 0.1)
         ) {
+          const lulaDelta = Number((rawData.polymarket.lulaPct - pt5m.lulaPct).toFixed(1));
           rawData.polymarket = {
             ...rawData.polymarket,
-            lulaDeltaPct: Number((rawData.polymarket.lulaPct - pt5m.lulaPct).toFixed(1)),
-            bolsonaroDeltaPct: Number((rawData.polymarket.bolsonaroPct - pt5m.bolsonaroPct).toFixed(1)),
+            lulaDeltaPct: lulaDelta,
+            bolsonaroDeltaPct: Number((-lulaDelta).toFixed(1)),
             deltaWindow: '5m'
           };
         }

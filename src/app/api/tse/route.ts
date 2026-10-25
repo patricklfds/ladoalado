@@ -227,7 +227,7 @@ let polymarketCache: { timestampMs: number; data: PolymarketOdds } = {
   timestampMs: 0,
   data: {
     lulaPct: 17.5,
-    bolsonaroPct: 82.4,
+    bolsonaroPct: 82.5,
     lulaDeltaPct: 0.5,
     bolsonaroDeltaPct: -0.5,
     deltaWindow: '1h',
@@ -301,8 +301,23 @@ function parsePolymarketEvents(events: PolymarketEventPayload[]): PolymarketOdds
 
   if (lulaPct === null && bolsonaroPct === null) return null;
   if ((lulaPct ?? 0) <= 0 && (bolsonaroPct ?? 0) <= 0) return null;
-  const finalBolso = bolsonaroPct ?? Number((100 - (lulaPct ?? 50)).toFixed(1));
-  const finalLula = lulaPct ?? Number((100 - finalBolso).toFixed(1));
+
+  // Devigging proporcional: normaliza os dois contratos para somarem cravado 100.0%
+  const rawBolso = bolsonaroPct ?? Math.max(0, 100 - (lulaPct ?? 50));
+  const rawLula = lulaPct ?? Math.max(0, 100 - rawBolso);
+  const rawSum = rawBolso + rawLula;
+
+  let finalBolso = rawBolso;
+  let finalLula = rawLula;
+  if (rawSum > 0) {
+    if (rawBolso >= rawLula) {
+      finalBolso = Number(((rawBolso / rawSum) * 100).toFixed(1));
+      finalLula = Number(Math.max(0, 100 - finalBolso).toFixed(1));
+    } else {
+      finalLula = Number(((rawLula / rawSum) * 100).toFixed(1));
+      finalBolso = Number(Math.max(0, 100 - finalLula).toFixed(1));
+    }
+  }
   const volumeUsd = ev.volume !== undefined ? Number(ev.volume) : undefined;
 
   // Registra no buffer circular de até 60 minutos para detectar oscilações rápidas de 5m e 15m durante a apuração
@@ -332,32 +347,40 @@ function parsePolymarketEvents(events: PolymarketEventPayload[]): PolymarketOdds
     (Math.abs(finalLula - sample5m.lulaPct) >= 0.1 || Math.abs(finalBolso - sample5m.bolsonaroPct) >= 0.1)
   ) {
     lulaDeltaPct = Number((finalLula - sample5m.lulaPct).toFixed(1));
-    bolsonaroDeltaPct = Number((finalBolso - sample5m.bolsonaroPct).toFixed(1));
+    bolsonaroDeltaPct = Number((-lulaDeltaPct).toFixed(1));
     deltaWindow = '5m';
   } else if (
     sample15m &&
     (Math.abs(finalLula - sample15m.lulaPct) >= 0.1 || Math.abs(finalBolso - sample15m.bolsonaroPct) >= 0.1)
   ) {
     lulaDeltaPct = Number((finalLula - sample15m.lulaPct).toFixed(1));
-    bolsonaroDeltaPct = Number((finalBolso - sample15m.bolsonaroPct).toFixed(1));
+    bolsonaroDeltaPct = Number((-lulaDeltaPct).toFixed(1));
     deltaWindow = '15m';
   } else if (
     (lula1hDelta !== null && Math.abs(lula1hDelta) >= 0.1) ||
     (bolso1hDelta !== null && Math.abs(bolso1hDelta) >= 0.1)
   ) {
-    lulaDeltaPct = lula1hDelta ?? Number((-(bolso1hDelta ?? 0)).toFixed(1));
-    bolsonaroDeltaPct = bolso1hDelta ?? Number((-(lula1hDelta ?? 0)).toFixed(1));
+    const netBolso1h =
+      bolso1hDelta !== null && lula1hDelta !== null
+        ? Number(((bolso1hDelta - lula1hDelta) / 2).toFixed(1))
+        : bolso1hDelta ?? Number((-(lula1hDelta ?? 0)).toFixed(1));
+    bolsonaroDeltaPct = netBolso1h;
+    lulaDeltaPct = Number((-netBolso1h).toFixed(1));
     deltaWindow = '1h';
   } else if (
     (lula24hDelta !== null && Math.abs(lula24hDelta) >= 0.1) ||
     (bolso24hDelta !== null && Math.abs(bolso24hDelta) >= 0.1)
   ) {
-    lulaDeltaPct = lula24hDelta ?? Number((-(bolso24hDelta ?? 0)).toFixed(1));
-    bolsonaroDeltaPct = bolso24hDelta ?? Number((-(lula24hDelta ?? 0)).toFixed(1));
+    const netBolso24h =
+      bolso24hDelta !== null && lula24hDelta !== null
+        ? Number(((bolso24hDelta - lula24hDelta) / 2).toFixed(1))
+        : bolso24hDelta ?? Number((-(lula24hDelta ?? 0)).toFixed(1));
+    bolsonaroDeltaPct = netBolso24h;
+    lulaDeltaPct = Number((-netBolso24h).toFixed(1));
     deltaWindow = '24h';
   } else if (lula1hDelta !== null || bolso1hDelta !== null) {
-    lulaDeltaPct = lula1hDelta ?? 0;
-    bolsonaroDeltaPct = bolso1hDelta ?? 0;
+    lulaDeltaPct = 0;
+    bolsonaroDeltaPct = 0;
     deltaWindow = '1h';
   }
 
