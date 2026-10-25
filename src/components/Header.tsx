@@ -200,39 +200,39 @@ export function Header({
 
   return (
     <header className="w-full border-b border-[var(--border)] bg-[var(--bg)] transition-colors">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 sm:py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-6">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 sm:py-5 flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4">
         {/* Marca & Identidade Editorial */}
-        <div className="flex items-baseline gap-3">
-          <span className="font-semibold text-lg sm:text-xl tracking-[-0.03em] text-[var(--fg)]">
+        <div className="flex items-baseline gap-2.5 shrink-0">
+          <span className="font-semibold text-lg sm:text-xl tracking-[-0.03em] text-[var(--fg)] whitespace-nowrap">
             Lado a Lado
           </span>
-          <span className="text-[11px] font-mono uppercase tracking-[0.1em] text-[var(--fg-muted)]">
+          <span className="text-[11px] font-mono uppercase tracking-[0.08em] text-[var(--fg-muted)] whitespace-nowrap">
             2026 vs 2022 · 2º Turno
           </span>
           {isDemo && (
-            <span className="text-[10px] font-mono uppercase tracking-[0.08em] text-amber-700 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">
+            <span className="text-[10px] font-mono uppercase tracking-[0.08em] text-amber-700 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded shrink-0">
               demo
             </span>
           )}
         </div>
 
-        {/* Controles de Sincronia e Ao Vivo */}
-        <div className="flex flex-wrap items-center justify-between sm:justify-end gap-3 sm:gap-5 text-xs">
+        {/* Controles de Sincronia e Ao Vivo (largura estável para nunca quebrar linha durante o refresh de 5s) */}
+        <div className="flex flex-wrap items-center justify-between md:justify-end gap-y-2 gap-x-3 sm:gap-x-4 text-xs shrink-0">
           {/* Seletor Minimalista de Sincronia com Acessibilidade ARIA */}
           <div
             role="group"
             aria-label="Modo de comparação temporal"
-            className="flex items-center gap-1 font-mono text-[11px] text-[var(--fg-muted)]"
+            className="flex items-center gap-1 font-mono text-[11px] text-[var(--fg-muted)] shrink-0"
           >
-            <span className="text-[10px] uppercase tracking-[0.08em] text-[var(--fg-subtle)] mr-1">
-              sincronia
+            <span className="hidden lg:inline text-[10px] uppercase tracking-[0.08em] text-[var(--fg-subtle)] mr-1">
+              modo:
             </span>
             <button
               type="button"
               role="radio"
               aria-checked={modo === 'urnas'}
               onClick={() => setModo('urnas')}
-              className={`px-2 py-1 rounded transition-colors cursor-pointer ${
+              className={`px-2 py-1 rounded transition-colors cursor-pointer whitespace-nowrap ${
                 modo === 'urnas'
                   ? 'text-[var(--fg)] font-semibold bg-[var(--accent)]'
                   : 'hover:text-[var(--fg)]'
@@ -246,7 +246,7 @@ export function Header({
               role="radio"
               aria-checked={modo === 'horario'}
               onClick={() => setModo('horario')}
-              className={`px-2 py-1 rounded transition-colors cursor-pointer ${
+              className={`px-2 py-1 rounded transition-colors cursor-pointer whitespace-nowrap ${
                 modo === 'horario'
                   ? 'text-[var(--fg)] font-semibold bg-[var(--accent)]'
                   : 'hover:text-[var(--fg)]'
@@ -256,11 +256,11 @@ export function Header({
             </button>
           </div>
 
-          <div className="flex items-center gap-3.5 sm:gap-4 border-l border-[var(--border)] pl-3.5 sm:pl-5">
-            {/* Status Ao Vivo / Conexão */}
-            <div className="flex items-center gap-1.5 font-mono text-[11px] text-[var(--fg-muted)]">
+          <div className="flex items-center gap-2.5 sm:gap-3.5 border-l border-[var(--border)] pl-3 sm:pl-4 shrink-0">
+            {/* Status Ao Vivo / Conexão (texto fixo para zero Layout Shift a cada 5s) */}
+            <div className="flex items-center gap-1.5 font-mono text-[11px] text-[var(--fg-muted)] whitespace-nowrap">
               <span
-                className={`inline-block w-1.5 h-1.5 rounded-full transition-colors ${
+                className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 transition-colors ${
                   !isOnline
                     ? 'bg-rose-500'
                     : isAtualizando
@@ -275,8 +275,6 @@ export function Header({
               <span className="text-[var(--fg)] font-medium">
                 {!isOnline
                   ? 'offline'
-                  : isAtualizando
-                  ? 'sincronizando'
                   : status2026 === 'finalizada'
                   ? 'finalizada'
                   : 'ao vivo'}
@@ -286,7 +284,7 @@ export function Header({
               {status2026 !== 'finalizada' && (
                 <>
                   <span className="text-[var(--fg-subtle)]">·</span>
-                  <span className="tabular-nums text-[var(--fg-subtle)]" title={`Próxima atualização em ${tempoRestante} segundos`}>
+                  <span className="tabular-nums text-[var(--fg-subtle)] inline-block w-[16px] text-right" title={`Próxima atualização em ${tempoRestante} segundos`}>
                     {tempoRestante}s
                   </span>
                 </>
@@ -297,7 +295,7 @@ export function Header({
                 disabled={isAtualizando || isSpinning}
                 aria-label="Atualizar dados da apuração agora"
                 title="Atualizar dados agora"
-                className="text-[var(--fg-subtle)] hover:text-[var(--fg)] transition-colors disabled:opacity-40 p-1 inline-flex items-center justify-center cursor-pointer"
+                className="text-[var(--fg-subtle)] hover:text-[var(--fg)] transition-colors disabled:opacity-40 p-1 inline-flex items-center justify-center cursor-pointer shrink-0"
               >
                 <svg
                   onAnimationIteration={handleAnimationIteration}
@@ -323,7 +321,7 @@ export function Header({
               onClick={handleShare}
               aria-label="Compartilhar resumo do placar atual"
               title="Copiar resumo formatado para WhatsApp ou X"
-              className={`text-[11px] font-mono transition-colors border-l border-[var(--border)] pl-3.5 sm:pl-4 py-0.5 cursor-pointer ${
+              className={`text-[11px] font-mono transition-colors border-l border-[var(--border)] pl-2.5 sm:pl-3.5 py-0.5 cursor-pointer whitespace-nowrap shrink-0 ${
                 copiedShare
                   ? 'text-[var(--color-positive)] font-semibold'
                   : 'text-[var(--fg-muted)] hover:text-[var(--fg)]'
@@ -338,7 +336,7 @@ export function Header({
                 type="button"
                 onClick={toggleTheme}
                 aria-label={isDark ? 'Alternar para tema claro' : 'Alternar para tema escuro'}
-                className="text-[11px] font-mono text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors border-l border-[var(--border)] pl-3.5 sm:pl-4 py-0.5 cursor-pointer"
+                className="text-[11px] font-mono text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors border-l border-[var(--border)] pl-2.5 sm:pl-3.5 py-0.5 cursor-pointer whitespace-nowrap shrink-0"
               >
                 {isDark ? 'claro' : 'escuro'}
               </button>
