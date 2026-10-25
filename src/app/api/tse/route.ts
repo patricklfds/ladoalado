@@ -865,8 +865,15 @@ async function fetchLiveMultiUFTurboState(cycle: string, electionCode: string): 
     const abstencaoPct =
       sumEleitoradoInstalado > 0 ? Number(((sumAbstencao / sumEleitoradoInstalado) * 100).toFixed(2)) : 0;
 
+    const currentBrasiliaTime = new Date().toLocaleTimeString('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+      hour12: false
+    });
+
     const effectiveTimestamp =
-      latestActiveUFTimestamp || brParsed?.timestamp || latestAnyUFTimestamp || '17:00:00';
+      sumSecoesApuradas > 0
+        ? latestActiveUFTimestamp || brParsed?.timestamp || latestAnyUFTimestamp || currentBrasiliaTime
+        : currentBrasiliaTime;
 
     const secoesAdiantadasUF = Math.max(0, sumSecoesApuradas - brSecoesApuradas);
     const votosAdiantadosUF = Math.max(0, sumVotosValidos - brVotosValidos);
@@ -909,16 +916,22 @@ async function fetchLiveMultiUFTurboState(cycle: string, electionCode: string): 
   }
 
   const primary = brParsed!;
+  const currentBrasiliaTime = new Date().toLocaleTimeString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    hour12: false
+  });
+  const primaryTimestamp = primary.secoesApuradas > 0 ? primary.timestamp : currentBrasiliaTime;
+
   const timeline2026 = recordTimelinePoint(
     electionCode,
     primary.secoesTotalizadasPct,
-    primary.timestamp,
+    primaryTimestamp,
     primary.candidatos
   );
 
   return {
     ano: 2026,
-    timestamp: primary.timestamp,
+    timestamp: primaryTimestamp,
     dataHoraISO: new Date().toISOString(),
     secoesTotalizadasPct: primary.secoesTotalizadasPct,
     totalSecoes: primary.totalSecoes,
