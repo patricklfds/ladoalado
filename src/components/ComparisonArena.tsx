@@ -19,7 +19,6 @@ interface ComparisonArenaProps {
 export function ComparisonArena({
   estado2026,
   estado2022,
-  modo,
   margem2026,
   margem2022
 }: ComparisonArenaProps) {
@@ -47,6 +46,13 @@ export function ComparisonArena({
   const refSegundo2026 = getHistoricalReference(segundo2026, cands2022);
   const polymarket = estado2026?.polymarket;
 
+  const shortLider2026 = lider2026
+    ? (lider2026.nome.toUpperCase().includes('BOLSONARO') ? 'Flávio' : formatCandidateName(lider2026.nome))
+    : '';
+  const shortLider2022 = lider2022
+    ? (lider2022.nome.toUpperCase().includes('BOLSONARO') ? 'Bolsonaro' : formatCandidateName(lider2022.nome))
+    : '';
+
   return (
     <section className="py-8 sm:py-11 border-b border-[var(--border)]">
       {/* Grid Principal Lado a Lado */}
@@ -54,25 +60,25 @@ export function ComparisonArena({
         {/* ================= COLUNA 2026 (HOJE) ================= */}
         <div>
           <div className="flex items-baseline justify-between gap-2 pb-3.5 mb-7 border-b border-[var(--border)]">
-            <div className="flex items-baseline gap-2.5">
+            <div className="flex items-baseline gap-2.5 shrink-0">
               <h2 className="font-semibold text-xl sm:text-2xl tracking-[-0.03em] text-[var(--fg)]">
                 2026
               </h2>
-              <span className="text-[11px] font-mono uppercase tracking-[0.1em] text-[var(--fg-muted)]">
+              <span className="text-[11px] font-mono uppercase tracking-[0.1em] text-[var(--fg-muted)] whitespace-nowrap">
                 {estado2026?.status === 'finalizada' ? 'resultado final' : 'ao vivo'}
               </span>
             </div>
-            <div className="text-right font-mono text-xs tabular-nums">
+            <div className="text-right font-mono text-xs tabular-nums whitespace-nowrap shrink-0">
               {hasVotes2026 && lider2026 ? (
                 margem2026 > 0 ? (
                   <span>
-                    <span className="font-semibold text-[var(--fg)]">{formatCandidateName(lider2026.nome)}</span>{' '}
+                    <span className="font-semibold text-[var(--fg)]">{shortLider2026}</span>{' '}
                     <span className="text-[var(--fg-muted)]">lidera</span>{' '}
                     <span className="font-semibold text-[var(--fg)]">+{margem2026.toFixed(2)}%</span>
                   </span>
                 ) : votosDiff2026 > 0 ? (
                   <span>
-                    <span className="font-semibold text-[var(--fg)]">{formatCandidateName(lider2026.nome)}</span>{' '}
+                    <span className="font-semibold text-[var(--fg)]">{shortLider2026}</span>{' '}
                     <span className="text-[var(--fg-muted)]">+{votosDiff2026.toLocaleString('pt-BR')} votos</span>
                   </span>
                 ) : (
@@ -222,19 +228,19 @@ export function ComparisonArena({
         {/* ================= COLUNA 2022 (HISTÓRICO) ================= */}
         <div className="border-t border-[var(--border)] pt-8 md:border-t-0 md:pt-0 md:border-l md:pl-12">
           <div className="flex items-baseline justify-between gap-2 pb-3.5 mb-7 border-b border-[var(--border)]">
-            <div className="flex items-baseline gap-2.5">
+            <div className="flex items-baseline gap-2.5 shrink-0">
               <h2 className="font-semibold text-xl sm:text-2xl tracking-[-0.03em] text-[var(--fg-muted)]">
                 2022
               </h2>
-              <span className="text-[11px] font-mono uppercase tracking-[0.08em] text-[var(--fg-subtle)]">
-                {modo === 'urnas' ? `atingido às ${estado2022?.timestamp}` : `às ${estado2022?.timestamp}`}
+              <span className="text-[11px] font-mono uppercase tracking-[0.08em] text-[var(--fg-subtle)] whitespace-nowrap">
+                {`às ${estado2022?.timestamp || '17:00'}`}
               </span>
             </div>
-            <div className="text-right font-mono text-xs tabular-nums">
+            <div className="text-right font-mono text-xs tabular-nums whitespace-nowrap shrink-0">
               {hasVotes2022 && lider2022 ? (
                 margem2022 > 0 ? (
                   <span className="text-[var(--fg-muted)]">
-                    <span className="font-medium text-[var(--fg-muted)]">{formatCandidateName(lider2022.nome)}</span>{' '}
+                    <span className="font-medium text-[var(--fg-muted)]">{shortLider2022}</span>{' '}
                     <span className="text-[var(--fg-subtle)]">liderava</span>{' '}
                     <span className="font-medium text-[var(--fg-muted)]">+{margem2022.toFixed(2)}%</span>
                   </span>
@@ -349,37 +355,6 @@ export function ComparisonArena({
         </div>
       </div>
 
-      {/* Síntese Editorial de Vantagem & Comparecimento (exibida assim que houver votos ou estatísticas do TSE) */}
-      {hasVotes2026 && lider2026 && segundo2026 && (
-        <div className="mt-8 pt-4 border-t border-[var(--border-subtle)] flex flex-wrap items-center justify-between gap-x-6 gap-y-2 text-[11px] font-mono tabular-nums text-[var(--fg-subtle)]">
-          <div>
-            <span>Diferença nominal: </span>
-            <strong className="text-[var(--fg)] font-medium">
-              {votosDiff2026.toLocaleString('pt-BR')} votos
-            </strong>
-            <span> para {formatCandidateName(lider2026.nome)}</span>
-          </div>
-          {(estado2026?.votosBrancos !== undefined || estado2026?.votosNulos !== undefined || estado2026?.abstencaoPct !== undefined) && (
-            <div className="flex flex-wrap items-center gap-3">
-              {estado2026?.votosBrancosPct !== undefined && (
-                <span>Brancos {estado2026.votosBrancosPct.toFixed(2)}%</span>
-              )}
-              {estado2026?.votosNulosPct !== undefined && (
-                <>
-                  <span>·</span>
-                  <span>Nulos {estado2026.votosNulosPct.toFixed(2)}%</span>
-                </>
-              )}
-              {estado2026?.abstencaoPct !== undefined && (
-                <>
-                  <span>·</span>
-                  <span>Abstenção {estado2026.abstencaoPct.toFixed(2)}%</span>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Seção Editorial Integrada: Probabilidades no Polymarket (mesma linguagem tipográfica e barras de 2px) */}
       {polymarket && (
