@@ -283,7 +283,7 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
                     </span>
                   </span>
                 ) : (
-                  <span>ref. 22: {r.lula2022.toFixed(1)}% · {r.bolso2022.toFixed(1)}%</span>
+                  <span>22: {r.lula2022.toFixed(1)}% · {r.bolso2022.toFixed(1)}%</span>
                 )}
               </div>
             </button>
