@@ -27,7 +27,7 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
   const regioesSummary = useMemo(() => {
     if (!ufs || ufs.length === 0) return [];
 
-    return REGIOES_ORDER.map(regiao => {
+    const list = REGIOES_ORDER.map(regiao => {
       const states = ufs.filter(u => u.regiao === regiao);
       const totalSecoes = states.reduce((acc, s) => acc + s.totalSecoes, 0);
       const secoesApuradas = states.reduce((acc, s) => acc + s.secoesApuradas, 0);
@@ -83,7 +83,15 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
         deltaLula
       };
     });
-  }, [ufs]);
+
+    if (sortMode === 'apurado') {
+      list.sort((a, b) => b.secoesPct - a.secoesPct || b.totalSecoes - a.totalSecoes);
+    } else if (sortMode === 'faltam') {
+      list.sort((a, b) => b.secoesRestantes - a.secoesRestantes);
+    }
+
+    return list;
+  }, [ufs, sortMode]);
 
   const sortedUFs = useMemo(() => {
     if (!ufs || ufs.length === 0) return [];
@@ -91,7 +99,11 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
     if (sortMode === 'faltam') {
       filtered.sort((a, b) => (b.totalSecoes - b.secoesApuradas) - (a.totalSecoes - a.secoesApuradas));
     } else if (sortMode === 'apurado') {
-      filtered.sort((a, b) => (b.secoesTotalizadasPct - a.secoesTotalizadasPct) || (b.totalSecoes - a.totalSecoes));
+      filtered.sort((a, b) => {
+        const pctA = a.totalSecoes > 0 ? (a.secoesApuradas / a.totalSecoes) * 100 : a.secoesTotalizadasPct;
+        const pctB = b.totalSecoes > 0 ? (b.secoesApuradas / b.totalSecoes) * 100 : b.secoesTotalizadasPct;
+        return (pctB - pctA) || (b.secoesTotalizadasPct - a.secoesTotalizadasPct) || (b.totalSecoes - a.totalSecoes);
+      });
     } else {
       filtered.sort((a, b) => b.totalSecoes - a.totalSecoes);
     }
@@ -133,13 +145,25 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
               <span className="text-[var(--border)] mr-1">|</span>
             </>
           )}
-          <span className="text-[10px] uppercase tracking-[0.08em] text-[var(--fg-subtle)] mr-1">ordenar</span>
+          <span className="text-[10px] uppercase tracking-[0.08em] text-[var(--fg-subtle)] mr-1">ordenar:</span>
+          <button
+            type="button"
+            onClick={() => setSortMode('apurado')}
+            className={`px-2.5 py-1 rounded transition-colors text-[11px] cursor-pointer ${
+              sortMode === 'apurado'
+                ? 'text-[var(--fg)] font-semibold bg-[var(--accent)] ring-1 ring-[var(--border)]'
+                : 'hover:text-[var(--fg)]'
+            }`}
+          >
+            % apurado ↓
+          </button>
+          <span className="text-[var(--border)]">/</span>
           <button
             type="button"
             onClick={() => setSortMode('volume')}
-            className={`px-2 py-1 rounded transition-colors text-[11px] cursor-pointer ${
+            className={`px-2.5 py-1 rounded transition-colors text-[11px] cursor-pointer ${
               sortMode === 'volume'
-                ? 'text-[var(--fg)] font-semibold bg-[var(--accent)]'
+                ? 'text-[var(--fg)] font-semibold bg-[var(--accent)] ring-1 ring-[var(--border)]'
                 : 'hover:text-[var(--fg)]'
             }`}
           >
@@ -149,32 +173,20 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
           <button
             type="button"
             onClick={() => setSortMode('faltam')}
-            className={`px-2 py-1 rounded transition-colors text-[11px] cursor-pointer ${
+            className={`px-2.5 py-1 rounded transition-colors text-[11px] cursor-pointer ${
               sortMode === 'faltam'
-                ? 'text-[var(--fg)] font-semibold bg-[var(--accent)]'
+                ? 'text-[var(--fg)] font-semibold bg-[var(--accent)] ring-1 ring-[var(--border)]'
                 : 'hover:text-[var(--fg)]'
             }`}
           >
             urnas restantes
-          </button>
-          <span className="text-[var(--border)]">/</span>
-          <button
-            type="button"
-            onClick={() => setSortMode('apurado')}
-            className={`px-2 py-1 rounded transition-colors text-[11px] cursor-pointer ${
-              sortMode === 'apurado'
-                ? 'text-[var(--fg)] font-semibold bg-[var(--accent)]'
-                : 'hover:text-[var(--fg)]'
-            }`}
-          >
-            % apurado
           </button>
         </div>
       </div>
 
       {/* 1. Cards das 6 Macro-Regiões (Tipografia Editorial Limpa + Vantagem Relativa vs 2022) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-9 gap-y-7 mb-10 pb-8 border-b border-[var(--border)]">
-        {regioesSummary.map(r => {
+        {regioesSummary.map((r, idx) => {
           const hasVotes = r.totalVotosValidos > 0;
           const displayLulaPct = hasVotes ? r.lulaPct : r.lula2022;
           const lulaLeads = r.lulaPct >= r.bolsonaroPct;
@@ -192,9 +204,16 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
             >
               {/* Linha 1: Nome da Região + % Apurado */}
               <div className="flex items-baseline justify-between gap-2 w-full">
-                <span className="font-semibold text-base tracking-[-0.02em] text-[var(--fg)] group-hover:underline decoration-[var(--border)] underline-offset-4">
-                  {r.regiao}
-                </span>
+                <div className="flex items-baseline gap-1.5">
+                  {sortMode === 'apurado' && (
+                    <span className="font-mono text-[10px] text-[var(--fg-subtle)] font-medium">
+                      #{idx + 1}
+                    </span>
+                  )}
+                  <span className="font-semibold text-base tracking-[-0.02em] text-[var(--fg)] group-hover:underline decoration-[var(--border)] underline-offset-4">
+                    {r.regiao}
+                  </span>
+                </div>
                 <span className="font-mono text-[11px] tabular-nums text-[var(--fg-subtle)] whitespace-nowrap">
                   {r.secoesPct.toFixed(2)}% apurado
                 </span>
@@ -277,7 +296,7 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
 
       {/* 2. Grid Espaçado das 28 UFs (3 colunas limpas + Apenas Vantagem Relativa vs 2022) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-9 gap-y-4 font-mono text-xs">
-        {visibleUFs.map(u => {
+        {visibleUFs.map((u, idx) => {
           const hasVotes = u.totalVotosValidos > 0;
           const effectivePct = u.secoesTotalizadasPct > 0
             ? u.secoesTotalizadasPct
@@ -295,6 +314,11 @@ export function StateBreakdown({ ufs }: StateBreakdownProps) {
               {/* Topo: Sigla + Nome do Estado | % Apurado */}
               <div className="flex items-baseline justify-between gap-2">
                 <div className="flex items-baseline gap-1.5 truncate">
+                  {sortMode === 'apurado' && (
+                    <span className="font-mono text-[10px] text-[var(--fg-subtle)] font-medium shrink-0">
+                      #{idx + 1}
+                    </span>
+                  )}
                   <span className="font-semibold text-[var(--fg)]">{u.uf}</span>
                   <span className="text-xs font-sans text-[var(--fg-muted)] truncate">{u.nome}</span>
                 </div>
