@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useSyncExternalStore } from 'react';
-import type { ComparisonMode, ElectionStatus } from '@/lib/types';
+import type { ComparisonMode, ElectionStatus, ElectionState } from '@/lib/types';
+import { formatCandidateName } from '@/lib/candidateUtils';
 
 interface HeaderProps {
   modo: ComparisonMode;
@@ -12,6 +13,72 @@ interface HeaderProps {
   recarregarAgora: () => void;
   isDemo?: boolean;
   status2026?: ElectionStatus;
+  estado2026?: ElectionState | null;
+  estado2022?: ElectionState | null;
+}
+
+function buildShareText(
+  estado2026: ElectionState | null | undefined,
+  estado2022: ElectionState | null | undefined,
+  modo: ComparisonMode
+): string {
+  const siteUrl = 'https://ladoalado2026.vercel.app';
+  const pct = estado2026?.secoesTotalizadasPct ?? 0;
+  const hasVotes2026 = (estado2026?.totalVotosValidos ?? 0) > 0 && pct > 0;
+
+  if (!hasVotes2026) {
+    return [
+      '🇧🇷 Apuração 2º Turno — 2026 vs 2022 (Lado a Lado)',
+      '',
+      'Acompanhe a totalização oficial em tempo real comparada no mesmo ponto exato com o 2º turno de 2022:',
+      siteUrl
+    ].join('\n');
+  }
+
+  const c26 = [...(estado2026?.candidatos || [])].sort(
+    (a, b) => (b.percentual - a.percentual) || (b.votos - a.votos) || (a.posicao - b.posicao)
+  );
+  const c22 = [...(estado2022?.candidatos || [])].sort(
+    (a, b) => (b.percentual - a.percentual) || (b.votos - a.votos) || (a.posicao - b.posicao)
+  );
+
+  const l26 = c26[0];
+  const s26 = c26[1];
+  const l22 = c22[0];
+  const s22 = c22[1];
+
+  const lula26 = c26.find(c => c.numero === '13' || c.nome.toUpperCase().includes('LULA'));
+  const lula22 = c22.find(c => c.numero === '13' || c.nome.toUpperCase().includes('LULA'));
+  const deltaLula = lula26 && lula22 ? Number((lula26.percentual - lula22.percentual).toFixed(2)) : 0;
+
+  const lines: string[] = [
+    `🇧🇷 Apuração 2º Turno (${pct.toFixed(2)}% das urnas)`,
+    ''
+  ];
+
+  if (l26 && s26) {
+    lines.push(
+      `2026 (agora): ${formatCandidateName(l26.nome)} ${l26.percentual.toFixed(2)}% vs ${formatCandidateName(s26.nome)} ${s26.percentual.toFixed(2)}%`
+    );
+  }
+  if (l22 && s22) {
+    const label22 = modo === 'urnas' ? '2022 (mesmo %)' : `2022 (${estado2022?.timestamp || 'mesmo horário'})`;
+    lines.push(
+      `${label22}: ${formatCandidateName(l22.nome)} ${l22.percentual.toFixed(2)}% vs ${formatCandidateName(s22.nome)} ${s22.percentual.toFixed(2)}%`
+    );
+  }
+
+  lines.push('');
+  if (Math.abs(deltaLula) < 0.01) {
+    lines.push('⚖️ Placar idêntico ao 2º turno de 2022 neste ponto');
+  } else if (deltaLula > 0) {
+    lines.push(`📈 Lula está +${deltaLula.toFixed(2)} p.p. acima de 2022 neste ponto`);
+  } else {
+    lines.push(`📈 Flávio está +${Math.abs(deltaLula).toFixed(2)} p.p. acima de Bolsonaro em 2022 neste ponto`);
+  }
+
+  lines.push(`Acompanhe ao vivo: ${siteUrl}`);
+  return lines.join('\n');
 }
 
 // Hook idiomático e sem re-render desnecessário para detectar hidratação no cliente
@@ -31,7 +98,9 @@ export function Header({
   isAtualizando,
   recarregarAgora,
   isDemo = false,
-  status2026
+  status2026,
+  estado2026,
+  estado2022
 }: HeaderProps) {
   const mounted = useIsMounted();
   const [isDark, setIsDark] = useState<boolean>(() => {
@@ -43,6 +112,7 @@ export function Header({
 
   const [isOnline, setIsOnline] = useState<boolean>(true);
   const [isSpinning, setIsSpinning] = useState<boolean>(false);
+  const [copiedShare, setCopiedShare] = useState<boolean>(false);
 
   const isAtualizandoRef = useRef(isAtualizando);
 
@@ -100,6 +170,32 @@ export function Header({
     const next = !isDark;
     setIsDark(next);
     localStorage.setItem('theme', next ? 'dark' : 'light');
+  };
+
+  const handleShare = async () => {
+    const text = buildShareText(estado2026, estado2022, modo);
+    const isMobileTouch =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(max-width: 640px)').matches &&
+      typeof navigator !== 'undefined' &&
+      typeof navigator.share === 'function';
+
+    if (isMobileTouch) {
+      try {
+        await navigator.share({ text });
+        return;
+      } catch (err) {
+        if ((err as Error)?.name === 'AbortError') return;
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedShare(true);
+      setTimeout(() => setCopiedShare(false), 2200);
+    } catch {
+      // Fallback caso clipboard falhe
+    }
   };
 
   return (
@@ -220,6 +316,21 @@ export function Header({
                 </svg>
               </button>
             </div>
+
+            {/* Compartilhar Placar (WhatsApp / X) */}
+            <button
+              type="button"
+              onClick={handleShare}
+              aria-label="Compartilhar resumo do placar atual"
+              title="Copiar resumo formatado para WhatsApp ou X"
+              className={`text-[11px] font-mono transition-colors border-l border-[var(--border)] pl-3.5 sm:pl-4 py-0.5 cursor-pointer ${
+                copiedShare
+                  ? 'text-[var(--color-positive)] font-semibold'
+                  : 'text-[var(--fg-muted)] hover:text-[var(--fg)]'
+              }`}
+            >
+              {copiedShare ? 'copiado ✓' : 'compartilhar ↗'}
+            </button>
 
             {/* Tema Claro / Escuro */}
             {mounted && (
