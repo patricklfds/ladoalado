@@ -226,12 +226,12 @@ const polymarketHistory: Array<{ timestampMs: number; lulaPct: number; bolsonaro
 let polymarketCache: { timestampMs: number; data: PolymarketOdds } = {
   timestampMs: 0,
   data: {
-    lulaPct: 17.5,
-    bolsonaroPct: 82.5,
-    lulaDeltaPct: 0.5,
-    bolsonaroDeltaPct: -0.5,
-    deltaWindow: '1h',
-    volumeUsd: 194749220,
+    lulaPct: 28.5,
+    bolsonaroPct: 71.5,
+    lulaDeltaPct: 0.0,
+    bolsonaroDeltaPct: 0.0,
+    deltaWindow: '1m',
+    volumeUsd: 200000000,
     updatedAtISO: new Date().toISOString(),
     url: POLYMARKET_EVENT_URL
   }
@@ -366,17 +366,23 @@ function parsePolymarketEvents(events: PolymarketEventPayload[]): PolymarketOdds
 
 async function fetchPolymarketViaDoH(): Promise<PolymarketOdds | null> {
   try {
-    const dohRes = await fetch(
-      'https://cloudflare-dns.com/dns-query?name=gamma-api.polymarket.com&type=A',
-      {
-        headers: { accept: 'application/dns-json' },
-        cache: 'no-store'
+    let ip = '3.170.170.27';
+    try {
+      const dohRes = await fetch(
+        'https://cloudflare-dns.com/dns-query?name=gamma-api.polymarket.com&type=A',
+        {
+          headers: { accept: 'application/dns-json' },
+          cache: 'no-store'
+        }
+      );
+      if (dohRes.ok) {
+        const dohJson = (await dohRes.json()) as { Answer?: Array<{ type: number; data: string }> };
+        const resolvedIp = dohJson.Answer?.find(a => a.type === 1)?.data;
+        if (resolvedIp) ip = resolvedIp;
       }
-    );
-    if (!dohRes.ok) return null;
-    const dohJson = (await dohRes.json()) as { Answer?: Array<{ type: number; data: string }> };
-    const ip = dohJson.Answer?.find(a => a.type === 1)?.data;
-    if (!ip) return null;
+    } catch {
+      // Usa fallback anycast CloudFront IP
+    }
 
     const rawText = await new Promise<string>((resolve, reject) => {
       const req = https.get(
@@ -384,7 +390,7 @@ async function fetchPolymarketViaDoH(): Promise<PolymarketOdds | null> {
           host: ip,
           servername: 'gamma-api.polymarket.com',
           path: '/events?slug=brazil-presidential-election',
-          timeout: 1800,
+          timeout: 3500,
           headers: {
             Host: 'gamma-api.polymarket.com',
             Accept: 'application/json',
@@ -418,13 +424,14 @@ async function fetchPolymarketViaDoH(): Promise<PolymarketOdds | null> {
 
 async function getPolymarketOdds(): Promise<PolymarketOdds> {
   const now = Date.now();
-  if (now - polymarketCache.timestampMs < 15000) {
+  // Cache ultra-rápido de 2 segundos para acompanhar oscilações minuto a minuto em tempo real
+  if (now - polymarketCache.timestampMs < 2000) {
     return polymarketCache.data;
   }
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1600);
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
     const res = await fetch('https://gamma-api.polymarket.com/events?slug=brazil-presidential-election', {
       signal: controller.signal,
       cache: 'no-store',
@@ -451,7 +458,7 @@ async function getPolymarketOdds(): Promise<PolymarketOdds> {
     }
   }
 
-  polymarketCache.timestampMs = now - 10000; // Re-tentar em 5s sem travar
+  polymarketCache.timestampMs = now - 500; // Re-tentar rapidamente sem travar
   return polymarketCache.data;
 }
 

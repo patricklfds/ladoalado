@@ -174,6 +174,20 @@ export function useElectionData() {
   const latestStateRef = useRef<ElectionState | null>(null);
   const polymarketHistoryRef = useRef<Array<{ timestampMs: number; lulaPct: number; bolsonaroPct: number }>>([]);
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = sessionStorage.getItem('ladoalado_poly_hist');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            polymarketHistoryRef.current = parsed;
+          }
+        }
+      } catch {}
+    }
+  }, []);
+
   // 1. Carregar o arquivo estático de 2022 (2º Turno) na inicialização
   useEffect(() => {
     async function load2022() {
@@ -238,6 +252,11 @@ export function useElectionData() {
           });
           while (hist.length > 0 && nowMs - hist[0].timestampMs > 30 * 60 * 1000) {
             hist.shift();
+          }
+          if (typeof window !== 'undefined') {
+            try {
+              sessionStorage.setItem('ladoalado_poly_hist', JSON.stringify(hist.slice(-30)));
+            } catch {}
           }
         }
 
