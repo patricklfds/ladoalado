@@ -9,6 +9,7 @@ import type {
   PolymarketOdds
 } from '@/lib/types';
 import { cleanPartyName, getCandidateColor } from '@/lib/candidateUtils';
+import { mergeSeedWithTimeline } from '@/lib/seedTimeline2026';
 
 interface TSECandNode {
   n: string;
@@ -166,7 +167,10 @@ function recordTimelinePoint(
   timestamp: string,
   candidatos: CandidateResult[]
 ): TimelinePoint2026[] {
-  const list = historicalTimelineByCode.get(electionCode) || [];
+  let list = historicalTimelineByCode.get(electionCode);
+  if (!list || list.length < 10) {
+    list = mergeSeedWithTimeline(list, urnasPct);
+  }
   if (urnasPct > 0 && candidatos.length > 0) {
     const candMap: Record<string, number> = {};
     candidatos.forEach(c => {
@@ -188,9 +192,10 @@ function recordTimelinePoint(
       });
       list.sort((a, b) => a.urnasPct - b.urnasPct);
     }
-    historicalTimelineByCode.set(electionCode, list);
   }
-  return [...list];
+  const merged = mergeSeedWithTimeline(list, urnasPct);
+  historicalTimelineByCode.set(electionCode, merged);
+  return [...merged];
 }
 
 interface ParsedScopeData {

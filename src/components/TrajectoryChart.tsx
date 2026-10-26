@@ -4,6 +4,7 @@ import React, { useState, useRef } from 'react';
 import type { TimelinePoint2022, CandidateResult, TimelinePoint2026 } from '@/lib/types';
 import { formatCandidateName, getCandidateColor } from '@/lib/candidateUtils';
 import { interpolateByUrnas } from '@/lib/comparator';
+import { mergeSeedWithTimeline } from '@/lib/seedTimeline2026';
 
 interface TrajectoryChartProps {
   timeline2022: TimelinePoint2022[];
@@ -147,10 +148,10 @@ export function TrajectoryChart({
     return () => mq.removeEventListener('change', update);
   }, []);
 
-  const width = isMobile ? 540 : 800;
-  const height = isMobile ? 235 : 205;
+  const width = isMobile ? 680 : 800;
+  const height = isMobile ? 185 : 205;
   const padding = isMobile
-    ? { top: 18, right: 86, bottom: 26, left: 32 }
+    ? { top: 18, right: 88, bottom: 24, left: 32 }
     : { top: 20, right: 112, bottom: 26, left: 35 };
 
   const plotW = width - padding.left - padding.right;
@@ -167,8 +168,9 @@ export function TrajectoryChart({
   const cand1Cor = cand1 ? getCandidateColor(cand1) : 'var(--color-pt)';
   const cand2Cor = cand2 ? getCandidateColor(cand2) : 'var(--color-pl)';
 
-  // Obter pontos históricos reais de 2026 até o percentual atual apurado
-  const validTimeline2026 = (timeline2026 || [])
+  // Obter pontos históricos reais de 2026 até o percentual atual apurado (com fusão da base seed oficial para garantir continuidade total)
+  const effectiveTimeline = mergeSeedWithTimeline(timeline2026, currentPct2026);
+  const validTimeline2026 = effectiveTimeline
     .filter(p => p.urnasPct > 0 && p.urnasPct <= (currentPct2026 + 0.1))
     .sort((a, b) => a.urnasPct - b.urnasPct);
 
@@ -537,7 +539,7 @@ export function TrajectoryChart({
               key={`c1-pt-${idx}`}
               cx={pt.x}
               cy={pt.y}
-              r="1.5"
+              r={isMobile ? "1.2" : "1.5"}
               fill={cand1Cor}
               opacity="0.35"
             />
@@ -547,7 +549,7 @@ export function TrajectoryChart({
               key={`c2-pt-${idx}`}
               cx={pt.x}
               cy={pt.y}
-              r="1.5"
+              r={isMobile ? "1.2" : "1.5"}
               fill={cand2Cor}
               opacity="0.35"
             />
@@ -570,14 +572,14 @@ export function TrajectoryChart({
               <circle
                 cx={currentX}
                 cy={rawY1}
-                r="3.5"
+                r={isMobile ? "3" : "3.5"}
                 fill={cand1Cor}
               />
               <text
-                x={currentX + 6}
+                x={currentX + (isMobile ? 5 : 6)}
                 y={labelY1 + 3}
                 fill={cand1Cor}
-                className="text-[10px] font-mono font-medium"
+                className={`font-mono font-medium ${isMobile ? 'text-[9.5px]' : 'text-[10px]'}`}
               >
                 {cand1Pct.toFixed(1)}% {cand1Nome.split(' ')[0]}
               </text>
@@ -586,14 +588,14 @@ export function TrajectoryChart({
               <circle
                 cx={currentX}
                 cy={rawY2}
-                r="3.5"
+                r={isMobile ? "3" : "3.5"}
                 fill={cand2Cor}
               />
               <text
-                x={currentX + 6}
+                x={currentX + (isMobile ? 5 : 6)}
                 y={labelY2 + 3}
                 fill={cand2Cor}
-                className="text-[10px] font-mono font-medium"
+                className={`font-mono font-medium ${isMobile ? 'text-[9.5px]' : 'text-[10px]'}`}
               >
                 {cand2Pct.toFixed(1)}% {cand2Nome.split(' ')[0]}
               </text>

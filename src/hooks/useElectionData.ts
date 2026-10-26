@@ -14,6 +14,7 @@ import {
   findByTime,
   calculatePaceDifferenceMinutes
 } from '@/lib/comparator';
+import { SEED_TIMELINE_2026, mergeSeedWithTimeline } from '@/lib/seedTimeline2026';
 
 const POLLING_INTERVAL_SECONDS = 5;
 const STORAGE_KEY_2026_2T = 'ladoalado_timeline_2026_2t';
@@ -149,14 +150,14 @@ export function useElectionData() {
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            return parsed;
+            return mergeSeedWithTimeline(parsed);
           }
         }
       } catch {
         // Ignorar erros de storage
       }
     }
-    return [];
+    return SEED_TIMELINE_2026;
   });
   const [estado2026, setEstado2026] = useState<ElectionState | null>(null);
   const [tempoRestante, setTempoRestante] = useState<number>(POLLING_INTERVAL_SECONDS);
@@ -332,23 +333,10 @@ export function useElectionData() {
       };
 
       setTimeline2026(prevTimeline => {
-        const pointMap = new Map<number, TimelinePoint2026>();
-        [...prevTimeline, ...serverTimeline, currentPoint].forEach(pt => {
-          if (pt && pt.urnasPct > 0) {
-            const key = Math.round(pt.urnasPct * 100) / 100;
-            const existing = pointMap.get(key);
-            if (!existing) {
-              pointMap.set(key, pt);
-            } else {
-              pointMap.set(key, {
-                ...existing,
-                ...pt,
-                candidatos: { ...existing.candidatos, ...pt.candidatos }
-              });
-            }
-          }
-        });
-        const mergedTimeline = Array.from(pointMap.values()).sort((a, b) => a.urnasPct - b.urnasPct);
+        const mergedTimeline = mergeSeedWithTimeline(
+          [...prevTimeline, ...serverTimeline, currentPoint],
+          mergedState.secoesTotalizadasPct
+        );
         try {
           if (!mergedState.origem.includes('demo')) {
             localStorage.setItem(STORAGE_KEY_2026_2T, JSON.stringify(mergedTimeline));
